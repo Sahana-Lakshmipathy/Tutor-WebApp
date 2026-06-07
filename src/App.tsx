@@ -30,10 +30,10 @@ export default function App() {
               <h2 className="text-[22px] font-bold text-gray-900 dark:text-white tracking-tight mb-3">
                 DSA Revision
               </h2>
-              <p className="text-[13px] text-gray-400 dark:text-[#555] mb-2">
+              <p className="text-[13px] text-gray-500 dark:text-[#777] mb-2">
                 Select a problem from the sidebar to start studying.
               </p>
-              <p className="text-[13px] text-gray-300 dark:text-[#333] leading-relaxed">
+              <p className="text-[13px] text-gray-400 dark:text-[#505050] leading-relaxed">
                 Add a new JSON file to the{' '}
                 <code className="font-mono text-[12px] text-gray-500 dark:text-[#555] bg-gray-100 dark:bg-[#0f0f0f] border border-gray-200 dark:border-[#222] rounded px-1.5 py-0.5">
                   problems/

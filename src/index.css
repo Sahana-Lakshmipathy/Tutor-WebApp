@@ -3,19 +3,31 @@
 /* Class-based dark mode: dark: utilities activate when an ancestor has .dark */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Font variables — picked up by Tailwind's font-sans / font-mono utilities */
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+}
+
+html {
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
 /* Prose rendered via dangerouslySetInnerHTML — Tailwind can't reach inner tags */
 .prose strong { font-weight: 600; }
 .prose code {
   border-radius: 3px;
   padding: 1px 5px;
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 12.5px;
   background: #f0f0f0;
   border: 1px solid #e0e0e0;
-  color: #333;
+  color: #222;
 }
-.dark .prose strong { color: #fff; }
-.dark .prose code { background: #111; border-color: #222; color: #e0e0e0; }
+.dark .prose strong { color: #f0f0f0; }
+.dark .prose code { background: #111; border-color: #222; color: #e8e8e8; }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }

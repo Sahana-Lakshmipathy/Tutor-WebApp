@@ -32,11 +32,11 @@ export default function MCQSection({ mcqs }: Props) {
       <div className="flex items-center gap-3 mb-6">
         <span className="text-[15px] font-semibold text-gray-900 dark:text-white flex-1">Practice MCQs</span>
         {attempted > 0 && (
-          <span className="font-mono text-xs text-gray-400 dark:text-[#666]">{score}/{attempted} correct</span>
+          <span className="font-mono text-xs text-gray-500 dark:text-[#808080]">{score}/{attempted} correct</span>
         )}
         <button
           onClick={reset}
-          className="text-[11px] text-gray-400 dark:text-[#555] border border-gray-200 dark:border-[#2a2a2a] px-3 py-1 rounded-sm hover:border-gray-500 dark:hover:border-[#666] hover:text-gray-600 dark:hover:text-[#aaa] transition-colors cursor-pointer"
+          className="text-[11px] text-gray-500 dark:text-[#777] border border-gray-200 dark:border-[#2a2a2a] px-3 py-1 rounded-sm hover:border-gray-500 dark:hover:border-[#666] hover:text-gray-700 dark:hover:text-[#bbb] transition-colors cursor-pointer"
         >
           Reset
         </button>
@@ -48,7 +48,7 @@ export default function MCQSection({ mcqs }: Props) {
           const state = states[qi];
           return (
             <div key={mcq.id}>
-              <p className="text-[14px] text-gray-700 dark:text-[#ccc] leading-[1.7] mb-3">
+              <p className="text-[14px] text-gray-800 dark:text-[#d8d8d8] leading-[1.7] mb-3">
                 <span className="font-mono text-[11px] text-gray-300 dark:text-[#3a3a3a] mr-1.5">Q{qi + 1}.</span>
                 {mcq.question}
               </p>
@@ -63,16 +63,16 @@ export default function MCQSection({ mcqs }: Props) {
                     else if (oi === state.selected)
                       cls += 'border-red-500 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-300 cursor-default';
                     else
-                      cls += 'border-gray-100 dark:border-[#1a1a1a] bg-gray-50 dark:bg-[#0d0d0d] text-gray-300 dark:text-[#444] cursor-default';
+                      cls += 'border-gray-100 dark:border-[#1a1a1a] bg-gray-50 dark:bg-[#0d0d0d] text-gray-400 dark:text-[#555] cursor-default';
                   } else {
-                    cls += 'border-gray-200 dark:border-[#222] bg-gray-50 dark:bg-[#0f0f0f] text-gray-600 dark:text-[#aaa] hover:border-gray-400 dark:hover:border-[#555] hover:text-gray-900 dark:hover:text-white cursor-pointer';
+                    cls += 'border-gray-200 dark:border-[#222] bg-gray-50 dark:bg-[#0f0f0f] text-gray-700 dark:text-[#c0c0c0] hover:border-gray-400 dark:hover:border-[#555] hover:text-gray-900 dark:hover:text-white cursor-pointer';
                   }
 
                   const letterCls = state.revealed
                     ? oi === mcq.answer     ? 'text-green-600 dark:text-green-500'
                     : oi === state.selected ? 'text-red-600 dark:text-red-500'
                     : 'text-gray-200 dark:text-[#2a2a2a]'
-                    : 'text-gray-300 dark:text-[#3a3a3a]';
+                    : 'text-gray-400 dark:text-[#4a4a4a]';
 
                   return (
                     <button key={oi} className={cls} onClick={() => select(qi, oi)} disabled={state.revealed}>
@@ -86,8 +86,8 @@ export default function MCQSection({ mcqs }: Props) {
               </div>
 
               {state.revealed && (
-                <div className="mt-3 px-4 py-3 bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#1e1e1e] border-l-2 border-l-gray-400 dark:border-l-[#555] rounded-md text-[13px] text-gray-500 dark:text-[#888] leading-relaxed">
-                  <span className="block text-[10px] font-bold tracking-widest uppercase text-gray-300 dark:text-[#444] mb-1.5">
+                <div className="mt-3 px-4 py-3 bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#1e1e1e] border-l-2 border-l-gray-400 dark:border-l-[#555] rounded-md text-[13px] text-gray-600 dark:text-[#a8a8a8] leading-relaxed">
+                  <span className="block text-[10px] font-bold tracking-widest uppercase text-gray-400 dark:text-[#555] mb-1.5">
                     Explanation
                   </span>
                   {mcq.explanation}

@@ -23,6 +23,15 @@ export interface Problem {
     language: string;
     solution: string;
   };
+  alternate_approach?: {
+    name: string;
+    description: string;
+    when_to_prefer?: string;
+    code?: {
+      language: string;
+      solution: string;
+    };
+  };
   mcqs: MCQ[];
 }
 

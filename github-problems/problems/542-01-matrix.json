@@ -2,7 +2,12 @@
   "id": "542",
   "title": "01 Matrix",
   "difficulty": "Medium",
-  "tags": ["BFS", "Dynamic Programming", "Matrix", "Graph"],
+  "tags": [
+    "BFS",
+    "Dynamic Programming",
+    "Matrix",
+    "Graph"
+  ],
   "description": "Given an m x n binary matrix mat, return the distance of the nearest 0 for each cell. The distance between two adjacent cells is 1.",
   "examples": [
     {
@@ -51,7 +56,11 @@
   "alternate_approach": {
     "name": "Dynamic Programming (Two-Pass)",
     "description": "An O(m*n) DP solution also exists. First pass goes top-to-bottom, left-to-right, updating dist[i][j] from its top and left neighbors: dist[i][j] = min(dist[i][j], dist[i-1][j]+1, dist[i][j-1]+1). Second pass goes bottom-to-top, right-to-left, propagating distances from the bottom and right neighbors. Both passes together cover all 4 directions. No queue needed. BFS is generally more intuitive; DP is leaner on overhead.",
-    "when_to_prefer": "If you want to avoid BFS queue overhead and are comfortable reasoning about two-pass DP sweeps. Both are O(m*n) time and space."
+    "when_to_prefer": "If you want to avoid BFS queue overhead and are comfortable reasoning about two-pass DP sweeps. Both are O(m*n) time and space.",
+    "code": {
+      "language": "python",
+      "solution": "from typing import List\n\n# Intuition\n# BFS uses a queue to propagate distances outward from all 0s.\n# DP asks the same question differently:\n# \"What's the minimum distance if I can only come from the TOP or LEFT?\"\n# — then a second pass asks \"what if I can only come from BOTTOM or RIGHT?\"\n# Together, two passes cover all 4 directions. No queue needed.\n\nclass Solution:\n    def updateMatrix(self, mat: List[List[int]]) -> List[List[int]]:\n        rows = len(mat)\n        cols = len(mat[0])\n\n        # Initialize dist with infinity for all cells\n        # 0-cells start at 0 — same as BFS seeding\n        dist = [[0 if mat[i][j] == 0 else float('inf')\n                 for j in range(cols)]\n                for i in range(rows)]\n\n        # ---- PASS 1: top-to-bottom, left-to-right ----\n        # Each cell looks ONLY at its top neighbor and left neighbor\n        # and asks: \"can I get a shorter distance through one of them?\"\n        for i in range(rows):\n            for j in range(cols):\n                if mat[i][j] == 0:\n                    continue  # already 0, skip\n                # check top neighbor\n                if i > 0:\n                    dist[i][j] = min(dist[i][j], dist[i-1][j] + 1)\n                # check left neighbor\n                if j > 0:\n                    dist[i][j] = min(dist[i][j], dist[i][j-1] + 1)\n\n        # After pass 1: dist[i][j] holds the shortest distance\n        # considering ONLY paths that come from top or left.\n        # Cells whose nearest 0 is below or to the right are STILL infinity here.\n\n        # ---- PASS 2: bottom-to-top, right-to-left ----\n        # Now each cell looks at its bottom neighbor and right neighbor\n        # This fills in distances for the two directions pass 1 couldn't see\n        for i in range(rows - 1, -1, -1):\n            for j in range(cols - 1, -1, -1):\n                if mat[i][j] == 0:\n                    continue  # already 0, skip\n                # check bottom neighbor\n                if i < rows - 1:\n                    dist[i][j] = min(dist[i][j], dist[i+1][j] + 1)\n                # check right neighbor\n                if j < cols - 1:\n                    dist[i][j] = min(dist[i][j], dist[i][j+1] + 1)\n\n        # After pass 2: every cell has seen all 4 directions.\n        # dist[i][j] is now the true minimum distance to the nearest 0.\n        return dist\n\n        # Why does this work?\n        # Any shortest path from a 1-cell to a 0-cell must travel in some\n        # combination of up/left/down/right. Pass 1 handles up+left.\n        # Pass 2 handles down+right. Together they cover all possibilities.\n        # The min() calls ensure we always keep the shortest found so far.\n\n        # PY gotcha: range(rows-1, -1, -1) is \"start at rows-1, go down to 0,\n        # step by -1\". The second -1 is the exclusive stop — i.e., include 0.\n\n        # time complexity:  O(m x n) — two full passes over the matrix\n        # space complexity: O(m x n) — just the dist matrix, no queue"
+    }
   },
   "complexity": {
     "time": "O(m * n) — each cell is enqueued and dequeued at most once",

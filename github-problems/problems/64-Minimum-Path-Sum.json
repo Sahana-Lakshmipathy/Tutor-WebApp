@@ -1,0 +1,385 @@
+{
+  "id": "64",
+  "title": "Minimum Path Sum",
+  "difficulty": "Medium",
+  "tags": ["Dynamic Programming", "Matrix", "Array"],
+  "description": "Given an m x n grid filled with non-negative integers, find a path from the top-left corner to the bottom-right corner that minimizes the sum of all numbers along the path. You can only move either down or right at any point in time.",
+  "examples": [
+    {
+      "input": "grid = [[1,3,1],[1,5,1],[4,2,1]]",
+      "output": "7",
+      "explanation": "The path 1 -> 3 -> 1 -> 1 -> 1 has the minimum sum of 7. Going 1->1->5->1->1 = 9, or 1->1->1->2->1 = 6... wait actually 1->3->1->1->1 = 7 is correct."
+    },
+    {
+      "input": "grid = [[1,2,3],[4,5,6]]",
+      "output": "12",
+      "explanation": "The path 1 -> 2 -> 3 -> 6 sums to 12."
+    }
+  ],
+  "constraints": [
+    "m == grid.length",
+    "n == grid[i].length",
+    "1 <= m, n <= 200",
+    "0 <= grid[i][j] <= 200"
+  ],
+  "intuition": "You can only move right or down, so every path from top-left to bottom-right is exactly (m-1) + (n-1) steps long. The question is which sequence of rights and downs gives the smallest sum. The key DP insight is: to reach cell (i,j), you had to come from either the cell directly above it (i-1,j) or the cell directly to its left (i,j-1). There is no other way in. So the minimum cost to reach (i,j) is: whichever of those two predecessors had the cheaper path, plus the cost of (i,j) itself. That gives the recurrence: dist[i][j] = min(dist[i-1][j], dist[i][j-1]) + grid[i][j]. The edge cases break this recurrence: the first row has no cell above it, so every cell in row 0 can only be reached from the left. The first column has no cell to its left, so every cell in column 0 can only be reached from above. The starting cell (0,0) has no predecessors at all — its cost is just grid[0][0]. Build the dist table in row-major order and the answer is at dist[rows-1][cols-1].",
+  "why_greedy_fails": "A greedy approach — always move toward the neighbor with the smaller value — does not work because a locally expensive step might open up a much cheaper path downstream. DP considers all possible paths implicitly by building up from subproblems.",
+  "recurrence": {
+    "general": "dist[i][j] = min(dist[i-1][j], dist[i][j-1]) + grid[i][j]",
+    "first_row": "dist[0][j] = dist[0][j-1] + grid[0][j]  — no top neighbor, only left",
+    "first_col": "dist[i][0] = dist[i-1][0] + grid[i][0]  — no left neighbor, only top",
+    "base_case": "dist[0][0] = grid[0][0]  — starting point, no predecessors"
+  },
+  "approach": {
+    "name": "Bottom-up DP with explicit dist table",
+    "steps": [
+      "Initialize a dist table of size m x n filled with 0.",
+      "Set dist[0][0] = grid[0][0] as the base case.",
+      "Fill the first column: for each i from 1 to rows-1, dist[i][0] = dist[i-1][0] + grid[i][0]. Only top neighbor available.",
+      "Fill the first row: for each j from 1 to cols-1, dist[0][j] = dist[0][j-1] + grid[0][j]. Only left neighbor available.",
+      "Fill the interior: for i in range(1, rows), for j in range(1, cols): dist[i][j] = min(dist[i-1][j], dist[i][j-1]) + grid[i][j].",
+      "Return dist[rows-1][cols-1]. In Python, dist[-1][-1] also works."
+    ]
+  },
+  "python_gotchas": [
+    "dist[-1][-1] is valid Python for the last element — equivalent to dist[rows-1][cols-1] and more concise.",
+    "The first column loop must start at i=1 (not 0) since dist[0][0] is already set as the base case. Starting at 0 would overwrite it with grid[0][0] again — which happens to be correct here but is sloppy.",
+    "The first row loop must also start at j=1 for the same reason.",
+    "The interior nested loops MUST start at range(1, rows) and range(1, cols), not 0. Starting at 0 would try to access dist[-1][j] and dist[i][-1] which in Python silently wraps around to the last row/column instead of throwing an IndexError — giving silently wrong results.",
+    "You can remove the print(dist) statement before submitting — LeetCode does not fail for print statements but it adds noise.",
+    "The dist table can be eliminated entirely with O(n) space by using a 1D rolling array, but the 2D version is clearer to reason about."
+  ],
+  "space_optimization": {
+    "description": "Instead of a full m x n dist table, you only need a single row of size n (or column of size m). When computing row i, you only ever look at the current row (left neighbor) and the previous row (top neighbor). A 1D array can represent both by updating it in place.",
+    "code": "def minPathSum(grid):\n    rows = len(grid)\n    cols = len(grid[0])\n    dp = [float('inf')] * cols\n    dp[0] = 0\n    for i in range(rows):\n        dp[0] += grid[i][0]  # left edge: accumulate downward\n        # PY: this handles first column edge case in-place\n        for j in range(1, cols):\n            dp[j] = min(dp[j], dp[j-1]) + grid[i][j]\n            # dp[j] before update = top neighbor (previous row, same col)\n            # dp[j-1] after update = left neighbor (current row, col j-1)\n    return dp[-1]",
+    "complexity": "O(n) space instead of O(m*n). Trade-off: harder to read and reason about."
+  },
+  "code": {
+    "language": "python",
+    "solution": "from typing import List\n\nclass Solution:\n    def minPathSum(self, grid: List[List[int]]) -> int:\n        # the main recurrence for finding the minimum cost path\n        # dist[i][j] = min(dist[i-1][j], dist[i][j-1]) + grid[i][j]\n        # this holds for interior cells that have BOTH a top and left neighbor\n\n        rows = len(grid)\n        cols = len(grid[0])\n\n        dist = [[0 for j in range(cols)] for i in range(rows)]\n\n        # base case: starting point cost is the cell itself\n        dist[0][0] = grid[0][0]\n\n        # first column: can ONLY arrive from the top neighbor\n        # dist[i][0] = dist[i-1][0] + grid[i][0]\n        for i in range(1, rows):\n            dist[i][0] = dist[i-1][0] + grid[i][0]\n\n        # first row: can ONLY arrive from the left neighbor\n        # dist[0][j] = dist[0][j-1] + grid[0][j]\n        for j in range(1, cols):\n            dist[0][j] = dist[0][j-1] + grid[0][j]\n\n        # interior cells: choose the cheaper of top or left predecessor\n        for i in range(1, rows):\n            for j in range(1, cols):\n                dist[i][j] = min(dist[i-1][j], dist[i][j-1]) + grid[i][j]\n\n        return dist[rows-1][cols-1]\n        # PY: could also do dist[-1][-1] — negative indexing accesses last element\n\n        # time complexity:  O(m * n) — every cell computed exactly once\n        # space complexity: O(m * n) — the dist table"
+  },
+  "complexity": {
+    "time": "O(m * n) — every cell in the dist table is computed exactly once in constant time",
+    "space": "O(m * n) — the dist table of size m x n. Reducible to O(n) with 1D rolling array."
+  },
+  "related_problems": [
+    {
+      "title": "Unique Paths (LC 62)",
+      "relation": "Same grid traversal setup, same edge case handling for first row and column. Instead of min cost, count the number of paths. Recurrence: dp[i][j] = dp[i-1][j] + dp[i][j-1]."
+    },
+    {
+      "title": "Triangle (LC 120)",
+      "relation": "Same bottom-up DP idea but on a triangular structure instead of a grid. Recurrence is the same shape: min of two predecessors plus current value."
+    },
+    {
+      "title": "Dungeon Game (LC 174)",
+      "relation": "Also a grid DP with movement constraints but requires building the DP table in reverse (bottom-right to top-left) because the constraint depends on future cells, not past ones."
+    },
+    {
+      "title": "01 Matrix (LC 542)",
+      "relation": "The DP two-pass solution for 01 Matrix uses the same directional sweep idea — forward pass covers top and left, backward pass covers bottom and right. Minimum Path Sum only needs one forward sweep because movement is restricted to right and down only."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "What is the core recurrence relation for this problem, and what does each term mean?",
+      "options": [
+        "dist[i][j] = dist[i-1][j] + dist[i][j-1] + grid[i][j] — sum all predecessors and current cell",
+        "dist[i][j] = min(dist[i-1][j], dist[i][j-1]) + grid[i][j] — cheapest predecessor plus current cell cost",
+        "dist[i][j] = max(dist[i-1][j], dist[i][j-1]) + grid[i][j] — most expensive predecessor plus current cell",
+        "dist[i][j] = min(grid[i-1][j], grid[i][j-1]) + grid[i][j] — use raw grid values of predecessors"
+      ],
+      "answer": 1,
+      "explanation": "To reach (i,j) you came from either (i-1,j) above or (i,j-1) to the left. We take the one with the cheaper accumulated path cost, then add the cost of stepping into (i,j) itself. Using dist (accumulated cost) not grid (local cost) is critical — you want the cheapest total path, not just the cheapest last step."
+    },
+    {
+      "id": 2,
+      "question": "Why do we need to handle the first row and first column separately before building the interior DP table?",
+      "options": [
+        "For efficiency — the edge cells compute faster when handled separately",
+        "Because cells in the first row have no top neighbor and cells in the first column have no left neighbor, so the general recurrence min(dist[i-1][j], dist[i][j-1]) would access out-of-bounds indices",
+        "Because grid values along the edges are always larger than interior values",
+        "Because the first row and column are always part of the optimal path"
+      ],
+      "answer": 1,
+      "explanation": "The general recurrence assumes both a top and left neighbor exist. For row 0, i-1 = -1 (invalid — or worse, silently wraps in Python). For column 0, j-1 = -1. We must handle these edge cases explicitly: first row cells only accumulate from the left, first column cells only accumulate from above."
+    },
+    {
+      "id": 3,
+      "question": "What is dist[0][0] set to, and why?",
+      "options": [
+        "0 — the starting cell has no cost to enter",
+        "grid[0][0] — the starting cell's cost is just its own value since it has no predecessors",
+        "float('inf') — we initialize everything to infinity first",
+        "1 — by convention the starting cell always costs 1"
+      ],
+      "answer": 1,
+      "explanation": "dist[0][0] = grid[0][0]. The starting cell has no predecessors (no cell above or to its left). The cost to reach it is just stepping into it, which costs grid[0][0]. All subsequent cells build on this base case."
+    },
+    {
+      "id": 4,
+      "question": "What does the first column fill loop compute? dist[i][0] = dist[i-1][0] + grid[i][0]",
+      "options": [
+        "The minimum cost path to each cell in the first column, which can only arrive from the cell directly above",
+        "The sum of all values in the first column",
+        "The maximum cost path to each cell in the first column",
+        "The distance from cell (i,0) to the bottom-right corner"
+      ],
+      "answer": 0,
+      "explanation": "Cells in column 0 have no left neighbor. The only way to reach dist[i][0] is from dist[i-1][0] (the cell above). So the cost is strictly cumulative downward: dist[i][0] = dist[i-1][0] + grid[i][0]. This is a running prefix sum down the first column."
+    },
+    {
+      "id": 5,
+      "question": "What is the time complexity of this DP solution?",
+      "options": [
+        "O(m + n) — we only process the edges and one diagonal",
+        "O(m * n * log(m * n)) — due to the min() comparison at each cell",
+        "O(m * n) — every cell is computed exactly once with O(1) work each",
+        "O(2^(m+n)) — exponential because we explore all paths"
+      ],
+      "answer": 2,
+      "explanation": "Every cell in the m x n dist table is filled exactly once. The work per cell is O(1): one min() of two values plus an addition. Total: O(m * n). The naive recursive approach without memoization would be O(2^(m+n)) but DP eliminates all redundant computation."
+    },
+    {
+      "id": 6,
+      "question": "What is the space complexity, and how can it be reduced?",
+      "options": [
+        "O(1) — we modify grid in-place so no extra space is used",
+        "O(m * n) as written (the dist table), but reducible to O(n) using a 1D rolling array since we only ever look at the current and previous row",
+        "O(m + n) — only the edges of the dist table are ever read",
+        "O(m * n) and cannot be reduced because all rows must be stored simultaneously"
+      ],
+      "answer": 1,
+      "explanation": "The 2D dist table is O(m * n). But when computing row i, we only ever need dist[i-1][j] (one row above) and dist[i][j-1] (same row, previous column). A 1D array of size n, updated in-place left to right, can serve both roles: dp[j] before update = top neighbor, dp[j-1] after update = left neighbor."
+    },
+    {
+      "id": 7,
+      "question": "In Python, what does dist[-1][-1] return, and why is it valid as a return value here?",
+      "options": [
+        "It raises an IndexError — negative indices are not valid for 2D lists",
+        "It returns the element at row -1, column -1 — Python negative indexing wraps around to the last element, so this is the bottom-right cell",
+        "It returns 0 because the last row and last column are initialized to 0",
+        "It returns a reference to the last row as a list, not a scalar"
+      ],
+      "answer": 1,
+      "explanation": "Python supports negative indexing: list[-1] is equivalent to list[len(list)-1]. So dist[-1][-1] is dist[rows-1][cols-1], which is the bottom-right cell — exactly what we want to return. It is idiomatic Python and slightly more concise than computing the index explicitly."
+    },
+    {
+      "id": 8,
+      "question": "Why does a greedy approach (always move toward the smaller adjacent value) fail for this problem?",
+      "options": [
+        "It doesn't fail — greedy always finds the optimal path on grids",
+        "Greedy fails because a locally expensive step can lead to a globally cheaper path; DP considers all subpath costs without committing prematurely",
+        "Greedy fails because it cannot handle 0 values in the grid",
+        "Greedy fails because it moves diagonally rather than right and down"
+      ],
+      "answer": 1,
+      "explanation": "Greedy makes the locally optimal choice at each step. But consider a grid where one path has a high early cost but very cheap later cells, while another has cheap early cells but an expensive bottleneck. Greedy picks the cheap early path and might get stuck with the expensive bottleneck. DP avoids this by building optimal subpaths from scratch for every cell."
+    },
+    {
+      "id": 9,
+      "question": "What would happen if you started the interior loop at range(0, rows) and range(0, cols) instead of range(1, rows) and range(1, cols)?",
+      "options": [
+        "Nothing — Python handles index 0 the same as any other index",
+        "An IndexError would immediately be raised when accessing dist[-1][j] or dist[i][-1]",
+        "Python's negative indexing silently wraps to the last row and last column, so dist[0][j] would incorrectly incorporate dist[-1][j] (the last row) — producing wrong results without any error",
+        "The loop would just skip (0,0) since it is the base case"
+      ],
+      "answer": 2,
+      "explanation": "In Python, dist[-1][j] silently accesses the last row, not an out-of-bounds index. So starting the loop at i=0 would compute dist[0][j] = min(dist[-1][j], dist[0][j-1]) + grid[0][j] — mixing in the last row's values for the first row computation. No error is raised, the output is silently wrong. This is a class of Python bug that does not exist in Java or C++ where negative indexing is an error."
+    },
+    {
+      "id": 10,
+      "question": "How is this problem different from Unique Paths (LC 62)?",
+      "options": [
+        "Unique Paths is harder — it has obstacles that must be avoided",
+        "Both problems have the same recurrence. Unique Paths counts how many paths exist (dp[i][j] = dp[i-1][j] + dp[i][j-1]) while Minimum Path Sum finds the cheapest path cost (dp[i][j] = min(dp[i-1][j], dp[i][j-1]) + grid[i][j])",
+        "Minimum Path Sum allows diagonal movement while Unique Paths does not",
+        "They are the same problem with different variable names"
+      ],
+      "answer": 1,
+      "explanation": "Same grid, same movement rules (right or down only), same edge case structure (first row and column). The recurrence differs: Unique Paths sums both predecessors (total ways to arrive), Minimum Path Sum takes min of both predecessors (cheapest way to arrive). This structural similarity is why practicing one immediately transfers to the other."
+    },
+    {
+      "id": 11,
+      "question": "What does the dist table represent after the DP is fully built?",
+      "options": [
+        "The grid values normalized to the range [0,1]",
+        "For each cell (i,j), the minimum total cost of any path from (0,0) to (i,j) moving only right or down",
+        "For each cell (i,j), the number of distinct paths from (0,0) to (i,j)",
+        "The shortest path in terms of number of steps, ignoring cell values"
+      ],
+      "answer": 1,
+      "explanation": "dist[i][j] stores the minimum accumulated cost of reaching cell (i,j) starting from (0,0) using only right and down moves. The final answer dist[rows-1][cols-1] is therefore the minimum cost of any complete path from top-left to bottom-right."
+    },
+    {
+      "id": 12,
+      "question": "If all values in the grid are equal (say all 1s), what does the answer represent?",
+      "options": [
+        "0, because identical values cancel out",
+        "m * n, the total number of cells in the grid",
+        "m + n - 1, the number of cells in any path from top-left to bottom-right",
+        "m + n, the total number of steps taken"
+      ],
+      "answer": 2,
+      "explanation": "Any path from (0,0) to (m-1,n-1) making only right and down moves visits exactly (m-1) + (n-1) + 1 = m + n - 1 cells. If every cell costs 1, every path has the same total cost of m + n - 1. The DP correctly returns this value."
+    },
+    {
+      "id": 13,
+      "question": "Can this problem be solved with BFS or Dijkstra? What would the trade-off be?",
+      "options": [
+        "No — BFS and Dijkstra only work on graphs with edges, not grids",
+        "Yes — Dijkstra with a min-heap would find the shortest path correctly, but at O(m*n*log(m*n)) time versus DP's O(m*n). DP is optimal here because the movement constraint (right/down only) means subproblems have no cycles.",
+        "Yes — BFS would find the optimal path in O(m*n) time, same as DP",
+        "No — Dijkstra requires negative edge weights to work correctly"
+      ],
+      "answer": 1,
+      "explanation": "Dijkstra works on general graphs with non-negative edge weights and would give a correct answer, but at O(m*n*log(m*n)) due to the priority queue. DP is faster here because the right/down-only movement constraint creates a DAG (no cycles), allowing us to process cells in a fixed order without needing a heap. Always prefer DP over Dijkstra when the graph is a DAG."
+    },
+    {
+      "id": 14,
+      "question": "What is the minimum path sum for a 1x1 grid with value [[k]]?",
+      "options": [
+        "0 — a single cell has no path cost",
+        "k — the only cell is both the start and end, so the path cost is just k",
+        "2k — you enter and exit the cell",
+        "An error — the grid must be at least 2x2"
+      ],
+      "answer": 1,
+      "explanation": "For a 1x1 grid: dist[0][0] = grid[0][0] = k. The first column and first row loops both have range(1,1) = empty range, so they do nothing. The interior loop also has empty range. We return dist[0][0] = k. Correct: you start and end at the same cell."
+    },
+    {
+      "id": 15,
+      "question": "For a 1xN grid (single row), what does the optimal path look like and what is its cost?",
+      "options": [
+        "You can choose any order to traverse the cells since you only move right",
+        "There is exactly one path — move right N-1 times — and its cost is the sum of all N values",
+        "The optimal path skips the largest value in the row",
+        "The cost is the minimum value in the row multiplied by N"
+      ],
+      "answer": 1,
+      "explanation": "With a single row, there is no choice — you must move right through every cell. The first row fill loop computes dist[0][j] = dist[0][j-1] + grid[0][j], which is a running prefix sum. The answer is the sum of all values in the row. Only when there are multiple rows do choices (right vs down) arise."
+    },
+    {
+      "id": 16,
+      "question": "Consider grid = [[1,2],[3,4]]. Trace through the DP table. What is the answer?",
+      "options": [
+        "6 — path 1->2->4->wait no. 1->2->4 = 7. 1->3->4 = 8. Minimum is 7",
+        "7 — path 1->2->4 has sum 7",
+        "8 — path 1->3->4 has sum 8",
+        "5 — path 1->4 is a diagonal shortcut"
+      ],
+      "answer": 1,
+      "explanation": "dist[0][0]=1. First col: dist[1][0]=1+3=4. First row: dist[0][1]=1+2=3. Interior: dist[1][1]=min(dist[0][1], dist[1][0])+grid[1][1]=min(3,4)+4=3+4=7. Answer is 7 via path (0,0)->(0,1)->(1,1) = 1->2->4."
+    },
+    {
+      "id": 17,
+      "question": "Why is it correct to fill the first column and first row BEFORE the interior nested loops, rather than inside them with special casing?",
+      "options": [
+        "It is just a code style choice — both orderings produce the same result",
+        "The interior loop at i=1,j=1 reads dist[0][1] and dist[1][0]. Those values must already be correct when the interior loop reaches them. Pre-filling guarantees this.",
+        "Filling edges inside the loop would cause an infinite loop",
+        "Python requires edge values to be initialized before entering nested loops"
+      ],
+      "answer": 1,
+      "explanation": "DP builds on previously computed values. When the interior loop computes dist[1][1], it reads dist[0][1] (first row) and dist[1][0] (first column). If those weren't pre-filled, they would still be 0 from initialization — giving wrong results. Pre-filling edges ensures every dependency is resolved before it is needed."
+    },
+    {
+      "id": 18,
+      "question": "What is the relationship between this problem and the DP two-pass approach used in 01 Matrix (LC 542)?",
+      "options": [
+        "They are identical problems with different variable names",
+        "01 Matrix needs two passes (forward and backward) because movement is allowed in all 4 directions. Minimum Path Sum needs only one forward pass (top-left to bottom-right) because movement is restricted to right and down only — all predecessors are always above or to the left.",
+        "Minimum Path Sum needs two passes because the grid can have 0 values",
+        "01 Matrix is a special case of Minimum Path Sum where all grid values are 0 or 1"
+      ],
+      "answer": 1,
+      "explanation": "In 01 Matrix, a shorter path to any 0 can come from any of the 4 directions, so a single left-to-right top-to-bottom pass is not enough — you also need a right-to-left bottom-to-top pass. In Minimum Path Sum, movement is one-directional: you can only go right or down. So every predecessor is always above or to the left — both available when you process cells in row-major order. One pass suffices."
+    },
+    {
+      "id": 19,
+      "question": "Could you solve this problem using recursion with memoization instead of bottom-up DP?",
+      "options": [
+        "No — recursive solutions always exceed the call stack limit on 200x200 grids",
+        "Yes — define f(i,j) = min cost to reach (i,j) from (0,0). Memoize with a 2D cache. The recurrence is the same. Both approaches are O(m*n) time and space, but top-down recursion has call stack overhead.",
+        "Yes — but only if you use sys.setrecursionlimit to allow deep recursion",
+        "No — memoization only works for 1D DP problems"
+      ],
+      "answer": 1,
+      "explanation": "Top-down recursion with memoization: f(i,j) = min(f(i-1,j), f(i,j-1)) + grid[i][j], with base cases f(0,0)=grid[0][0], f(i,0)=f(i-1,0)+grid[i][0], f(0,j)=f(0,j-1)+grid[0][j]. Cache with @lru_cache or a dict. Same asymptotic complexity as bottom-up. Bottom-up avoids recursion overhead and is safer for large inputs in Python where recursion depth is limited to ~1000 by default."
+    },
+    {
+      "id": 20,
+      "question": "What property of the movement rules (right or down only) makes this a DP problem rather than a general shortest-path problem?",
+      "options": [
+        "The grid is always square",
+        "Right-and-down-only movement creates a DAG (directed acyclic graph) — you can never revisit a cell. This means subproblems have no circular dependencies, so DP can solve them in a fixed order without a priority queue.",
+        "The grid values are always non-negative integers",
+        "The grid has at most 200x200 cells which is small enough for DP"
+      ],
+      "answer": 1,
+      "explanation": "If you could move in all directions (including left and up), paths could form cycles and you would need Dijkstra or Bellman-Ford. Right-and-down-only means once you leave a cell, you can never return. Every cell's optimal subproblem depends only on cells with smaller row+column indices — processed earlier in row-major order. No cycle = pure DP."
+    },
+    {
+      "id": 21,
+      "question": "In the 1D space-optimized solution, before updating dp[j] for cell (i,j), what does dp[j] currently hold?",
+      "options": [
+        "The minimum path cost to reach (i,j) in the current row — it holds the current row's left neighbor",
+        "The minimum path cost to reach (i-1,j) — the top neighbor from the previous row",
+        "The raw grid value grid[i][j]",
+        "float('inf') — it hasn't been computed yet"
+      ],
+      "answer": 1,
+      "explanation": "In the 1D rolling array approach, dp[j] before the update still holds the value computed for row i-1 at column j — that is dist[i-1][j], the top neighbor. After the update, dp[j-1] already holds the updated value for (i, j-1) — the left neighbor. So dp[j] = min(dp[j], dp[j-1]) + grid[i][j] correctly implements the recurrence in O(n) space."
+    },
+    {
+      "id": 22,
+      "question": "What would the dist table look like for grid = [[1,3,1],[1,5,1],[4,2,1]]?",
+      "options": [
+        "[[1,3,1],[1,5,1],[4,2,1]] — same as the grid, unchanged",
+        "[[1,4,5],[2,7,6],[6,8,7]] — accumulated minimum costs row by row",
+        "[[0,0,0],[0,0,0],[0,0,7]] — only the answer cell is filled",
+        "[[1,3,1],[2,6,2],[6,7,3]] — wrong, does not take min correctly"
+      ],
+      "answer": 1,
+      "explanation": "dist[0][0]=1. First row: dist[0][1]=1+3=4, dist[0][2]=4+1=5. First col: dist[1][0]=1+1=2, dist[2][0]=2+4=6. Interior: dist[1][1]=min(4,2)+5=7, dist[1][2]=min(5,7)+1=6, dist[2][1]=min(7,6)+2=8, dist[2][2]=min(6,8)+1=7. Final table [[1,4,5],[2,7,6],[6,8,7]], answer=7."
+    },
+    {
+      "id": 23,
+      "question": "What happens if you forget the base case dist[0][0] = grid[0][0] and leave it as 0?",
+      "options": [
+        "Nothing — the first column and first row loops correct it automatically",
+        "The first column loop starts at i=1 so dist[0][0] stays 0. The first row loop starts at j=1 so dist[0][0] stays 0. Every path sum is then undercounted by grid[0][0]. The answer is grid[0][0] less than the true minimum.",
+        "An IndexError is raised when j-1 is accessed in the first row loop",
+        "The answer is correct because dist[0][0]=0 only shifts all values uniformly and the minimum path remains the same"
+      ],
+      "answer": 1,
+      "explanation": "Both edge loops start at index 1 and never touch dist[0][0]. It stays 0. dist[0][1] = 0 + grid[0][1] instead of grid[0][0] + grid[0][1]. Every downstream cell is undercounted by grid[0][0]. The final answer will be grid[0][0] less than correct. This is a classic off-by-one bug from forgetting the base case."
+    },
+    {
+      "id": 24,
+      "question": "This problem constrains 0 <= grid[i][j] <= 200. Why does this constraint matter for the algorithm?",
+      "options": [
+        "It allows using integer arrays instead of float arrays, saving memory",
+        "Non-negative grid values mean moving right or down never makes the path cheaper by backtracking — there is no incentive to revisit cells. If negative values were allowed, a greedy right-or-down strategy might miss a beneficial detour.",
+        "It limits the maximum possible answer to 200 * 200 = 40000, enabling early termination",
+        "It means grid[i][j] can be used as an index for memoization"
+      ],
+      "answer": 1,
+      "explanation": "Non-negative values mean every step adds to (or keeps the same) the path cost. You can never benefit from revisiting a cell. This is what makes the DP approach sound — we never have a reason to consider paths that loop back. If grid values could be negative, you'd need Bellman-Ford and the problem would be fundamentally harder."
+    },
+    {
+      "id": 25,
+      "question": "You are given a very wide grid (m=2, n=100000). Which approach is better: the 2D DP table or the 1D rolling array?",
+      "options": [
+        "2D table — it is easier to debug and performance difference is negligible",
+        "1D rolling array — for m=2, n=100000 the 2D table allocates 200000 cells while the 1D array allocates only 100000. But more importantly, the 1D array has better cache locality since you only access one row of contiguous memory at a time.",
+        "Neither — use BFS since the grid is very wide",
+        "2D table — the 1D rolling array only works for square matrices"
+      ],
+      "answer": 1,
+      "explanation": "The 1D rolling array uses O(n) space — one row — instead of O(m*n). For large n, this matters. Additionally, keeping a single row in cache versus two rows (current and previous) improves cache hit rates. The 1D approach is strictly better here with no correctness trade-offs. Both are O(m*n) time."
+    }
+  ]
+}

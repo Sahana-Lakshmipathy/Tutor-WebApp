@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
-import { GITHUB, apiBase, rawBase } from '../config/github';
+import { GITHUB, GITHUB_TOKEN, apiBase, rawBase } from '../config/github';
 import type { Problem, ProblemMeta } from '../types/problem';
+
+function authHeaders(): HeadersInit {
+  return GITHUB_TOKEN ? { Authorization: `token ${GITHUB_TOKEN}` } : {};
+}
 
 interface GithubFile {
   name: string;
@@ -27,7 +31,7 @@ export function useProblems() {
 
   useEffect(() => {
     const url = `${apiBase}/${GITHUB.problemsPath}`;
-    fetch(url)
+    fetch(url, { headers: authHeaders() })
       .then(r => {
         if (!r.ok) throw new Error(`GitHub API error: ${r.status} — check your owner/repo in config/github.ts`);
         return r.json() as Promise<GithubFile[]>;
@@ -59,7 +63,7 @@ export function useProblem(filename: string | null) {
     setProblem(null);
 
     const url = `${rawBase}/${GITHUB.problemsPath}/${filename}`;
-    fetch(url)
+    fetch(url, { headers: authHeaders() })
       .then(r => {
         if (!r.ok) throw new Error(`Failed to load problem: ${r.status}`);
         return r.json() as Promise<Problem>;

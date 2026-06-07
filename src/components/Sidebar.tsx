@@ -42,14 +42,14 @@ export default function Sidebar({ problems, loading, error, selected, onSelect, 
           <div className="text-xs font-bold tracking-widest uppercase text-gray-900 dark:text-white">
             DSA Revision
           </div>
-          <div className="text-[11px] text-gray-400 dark:text-[#444] mt-0.5">
+          <div className="text-[11px] text-gray-500 dark:text-[#666] mt-0.5">
             {problems.length} problems
           </div>
         </div>
         <button
           onClick={onToggleTheme}
           title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-          className="p-1.5 rounded-md text-gray-400 dark:text-[#555] hover:text-gray-700 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+          className="p-1.5 rounded-md text-gray-500 dark:text-[#666] hover:text-gray-800 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-[#1a1a1a] transition-colors cursor-pointer"
         >
           {dark ? <SunIcon /> : <MoonIcon />}
         </button>
@@ -58,13 +58,13 @@ export default function Sidebar({ problems, loading, error, selected, onSelect, 
       {/* List */}
       <div className="flex-1 overflow-y-auto py-2">
         {loading && (
-          <p className="px-4 py-4 text-xs text-gray-400 dark:text-[#444]">Loading problems...</p>
+          <p className="px-4 py-4 text-xs text-gray-400 dark:text-[#555]">Loading problems...</p>
         )}
         {error && (
           <p className="px-4 py-4 text-xs text-red-500 leading-relaxed">{error}</p>
         )}
         {!loading && !error && problems.length === 0 && (
-          <p className="px-4 py-4 text-xs text-gray-400 dark:text-[#444] leading-relaxed">
+          <p className="px-4 py-4 text-xs text-gray-500 dark:text-[#555] leading-relaxed">
             No problems found. Add JSON files to your GitHub repo.
           </p>
         )}
@@ -77,10 +77,10 @@ export default function Sidebar({ problems, loading, error, selected, onSelect, 
               'w-full flex items-center gap-2 px-4 py-2.5 text-left transition-colors border-l-2',
               selected === p.filename
                 ? 'bg-gray-200 dark:bg-[#181818] text-gray-900 dark:text-white border-l-gray-900 dark:border-l-white'
-                : 'text-gray-500 dark:text-[#888] hover:bg-gray-100 dark:hover:bg-[#111] hover:text-gray-900 dark:hover:text-white border-l-transparent',
+                : 'text-gray-600 dark:text-[#a0a0a0] hover:bg-gray-100 dark:hover:bg-[#111] hover:text-gray-900 dark:hover:text-white border-l-transparent',
             ].join(' ')}
           >
-            <span className="font-mono text-[10px] text-gray-300 dark:text-[#3a3a3a] min-w-[30px]">#{p.id}</span>
+            <span className="font-mono text-[10px] text-gray-400 dark:text-[#444] min-w-[30px]">#{p.id}</span>
             <span className="flex-1 text-[13px] truncate">{p.title}</span>
             <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-sm shrink-0 ${diffClass[p.difficulty] ?? ''}`}>
               {p.difficulty}
