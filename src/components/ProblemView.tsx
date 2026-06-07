@@ -2,7 +2,6 @@ import { useState } from 'react';
 import type { Problem } from '../types/problem';
 import CodeBlock from './CodeBlock';
 import MCQSection from './MCQSection';
-import './ProblemView.css';
 
 interface Props {
   problem: Problem;
@@ -11,46 +10,63 @@ interface Props {
 type Tab = 'problem' | 'intuition' | 'code' | 'mcq';
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'problem', label: 'Problem' },
+  { key: 'problem',   label: 'Problem'   },
   { key: 'intuition', label: 'Intuition' },
-  { key: 'code', label: 'Code' },
-  { key: 'mcq', label: `MCQs` },
+  { key: 'code',      label: 'Code'      },
+  { key: 'mcq',       label: 'MCQs'      },
 ];
 
 const diffClass: Record<string, string> = {
-  Easy: 'diff-easy',
-  Medium: 'diff-medium',
-  Hard: 'diff-hard',
+  Easy:   'text-green-500 border border-green-500/30',
+  Medium: 'text-amber-500 border border-amber-500/30',
+  Hard:   'text-red-500   border border-red-500/30',
 };
+
+function formatText(text: string): string {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>');
+}
+
+const sectionLabel = 'text-[10px] font-bold tracking-widest uppercase text-gray-400 dark:text-[#444] mb-3';
 
 export default function ProblemView({ problem }: Props) {
   const [tab, setTab] = useState<Tab>('problem');
 
   return (
-    <div className="pv">
+    <div className="flex flex-col h-screen overflow-hidden">
       {/* Header */}
-      <div className="pv-header">
-        <div className="pv-meta">
-          <span className="pv-id">#{problem.id}</span>
-          <h1 className="pv-title">{problem.title}</h1>
-          <span className={`pv-diff ${diffClass[problem.difficulty] ?? ''}`}>
+      <div className="px-8 pt-6 pb-4 border-b border-gray-200 dark:border-[#1a1a1a] shrink-0">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="font-mono text-[11px] text-gray-300 dark:text-[#333]">#{problem.id}</span>
+          <h1 className="text-[20px] font-bold text-gray-900 dark:text-white tracking-tight">{problem.title}</h1>
+          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-sm ${diffClass[problem.difficulty] ?? ''}`}>
             {problem.difficulty}
           </span>
         </div>
-        <div className="pv-tags">
+        <div className="flex flex-wrap gap-1.5">
           {problem.tags.map(t => (
-            <span key={t} className="pv-tag">{t}</span>
+            <span key={t} className="text-[11px] text-gray-400 dark:text-[#3a3a3a] bg-gray-100 dark:bg-[#0f0f0f] border border-gray-200 dark:border-[#1e1e1e] px-2 py-0.5 rounded-sm">
+              {t}
+            </span>
           ))}
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="pv-tabs">
+      <div className="flex px-8 border-b border-gray-200 dark:border-[#1a1a1a] bg-white dark:bg-black shrink-0">
         {TABS.map(t => (
           <button
             key={t.key}
-            className={`pv-tab ${tab === t.key ? 'active' : ''}`}
             onClick={() => setTab(t.key)}
+            className={[
+              'py-3 mr-7 text-[13px] border-b-2 transition-colors cursor-pointer',
+              tab === t.key
+                ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
+                : 'text-gray-400 dark:text-[#444] border-transparent hover:text-gray-600 dark:hover:text-[#aaa]',
+            ].join(' ')}
           >
             {t.key === 'mcq' ? `MCQs (${problem.mcqs.length})` : t.label}
           </button>
@@ -58,79 +74,92 @@ export default function ProblemView({ problem }: Props) {
       </div>
 
       {/* Content */}
-      <div className="pv-content">
-        {tab === 'problem' && (
-          <div className="pv-section">
-            <div className="prose" dangerouslySetInnerHTML={{ __html: formatText(problem.description) }} />
+      <div className="flex-1 overflow-y-auto px-8 py-7">
+        <div className="max-w-[820px] flex flex-col gap-7">
 
-            {problem.examples && problem.examples.length > 0 && (
-              <div className="pv-examples">
-                <h3 className="section-label">Examples</h3>
-                {problem.examples.map((ex, i) => (
-                  <div key={i} className="example-block">
-                    <div className="example-row"><span className="ex-label">Input</span><code>{ex.input}</code></div>
-                    <div className="example-row"><span className="ex-label">Output</span><code>{ex.output}</code></div>
-                    {ex.explanation && (
-                      <div className="example-row"><span className="ex-label">Why</span><span className="ex-explain">{ex.explanation}</span></div>
-                    )}
+          {/* ── Problem ── */}
+          {tab === 'problem' && (
+            <>
+              <div
+                className="prose text-[14px] text-gray-600 dark:text-[#bbb] leading-[1.8]"
+                dangerouslySetInnerHTML={{ __html: formatText(problem.description) }}
+              />
+
+              {problem.examples && problem.examples.length > 0 && (
+                <div>
+                  <h3 className={sectionLabel}>Examples</h3>
+                  <div className="flex flex-col gap-3">
+                    {problem.examples.map((ex, i) => (
+                      <div key={i} className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#1e1e1e] rounded-md overflow-hidden">
+                        <div className="flex items-start gap-3 px-4 py-2.5 border-b border-gray-100 dark:border-[#161616]">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-300 dark:text-[#3a3a3a] min-w-[48px] pt-0.5">Input</span>
+                          <code className="font-mono text-[13px] text-gray-700 dark:text-[#ccc]">{ex.input}</code>
+                        </div>
+                        <div className="flex items-start gap-3 px-4 py-2.5 border-b border-gray-100 dark:border-[#161616]">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-300 dark:text-[#3a3a3a] min-w-[48px] pt-0.5">Output</span>
+                          <code className="font-mono text-[13px] text-gray-700 dark:text-[#ccc]">{ex.output}</code>
+                        </div>
+                        {ex.explanation && (
+                          <div className="flex items-start gap-3 px-4 py-2.5">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-300 dark:text-[#3a3a3a] min-w-[48px] pt-0.5">Why</span>
+                            <span className="text-[13px] text-gray-400 dark:text-[#777] leading-relaxed">{ex.explanation}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              )}
 
-            {problem.constraints && problem.constraints.length > 0 && (
-              <div className="pv-constraints">
-                <h3 className="section-label">Constraints</h3>
-                <ul className="constraint-list">
-                  {problem.constraints.map((c, i) => (
-                    <li key={i}><code>{c}</code></li>
+              {problem.constraints && problem.constraints.length > 0 && (
+                <div>
+                  <h3 className={sectionLabel}>Constraints</h3>
+                  <ul className="flex flex-col gap-1.5 list-none p-0 m-0">
+                    {problem.constraints.map((c, i) => (
+                      <li key={i}>
+                        <code className="font-mono text-[12.5px] text-gray-600 dark:text-[#aaa] bg-gray-50 dark:bg-[#0d0d0d] border border-gray-200 dark:border-[#1e1e1e] rounded px-2.5 py-1 inline-block">
+                          {c}
+                        </code>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── Intuition ── */}
+          {tab === 'intuition' && (
+            <>
+              <div className="bg-gray-50 dark:bg-[#080808] border border-gray-200 dark:border-[#1e1e1e] border-l-2 border-l-gray-900 dark:border-l-white rounded-md px-5 py-4">
+                <div
+                  className="prose text-[14px] text-gray-600 dark:text-[#bbb] leading-[1.8]"
+                  dangerouslySetInnerHTML={{ __html: formatText(problem.intuition) }}
+                />
+              </div>
+
+              <div>
+                <h3 className={sectionLabel}>Approach — {problem.approach.name}</h3>
+                <ol className="list-decimal list-outside pl-5 flex flex-col gap-2.5 m-0">
+                  {problem.approach.steps.map((step, i) => (
+                    <li key={i} className="text-[14px] text-gray-500 dark:text-[#aaa] leading-[1.65] pl-1">{step}</li>
                   ))}
-                </ul>
+                </ol>
               </div>
-            )}
-          </div>
-        )}
+            </>
+          )}
 
-        {tab === 'intuition' && (
-          <div className="pv-section">
-            <div className="intuition-block">
-              <div className="prose" dangerouslySetInnerHTML={{ __html: formatText(problem.intuition) }} />
-            </div>
-
-            <div className="approach-block">
-              <h3 className="section-label">Approach — {problem.approach.name}</h3>
-              <ol className="approach-steps">
-                {problem.approach.steps.map((step, i) => (
-                  <li key={i}>{step}</li>
-                ))}
-              </ol>
-            </div>
-          </div>
-        )}
-
-        {tab === 'code' && (
-          <div className="pv-section">
+          {/* ── Code ── */}
+          {tab === 'code' && (
             <CodeBlock code={problem.code.solution} language={problem.code.language} />
-          </div>
-        )}
+          )}
 
-        {tab === 'mcq' && (
-          <div className="pv-section">
+          {/* ── MCQs ── */}
+          {tab === 'mcq' && (
             <MCQSection mcqs={problem.mcqs} />
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
-}
-
-// Preserve newlines as <br> and bold **text**
-function formatText(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/\n/g, '<br>');
 }

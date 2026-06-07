@@ -1,7 +1,5 @@
 import { useEffect, useRef } from 'react';
 import hljs from 'highlight.js';
-import 'highlight.js/styles/github-dark.css';
-import './CodeBlock.css';
 
 interface Props {
   code: string;
@@ -21,13 +19,18 @@ export default function CodeBlock({ code, language }: Props) {
   const copy = () => navigator.clipboard.writeText(code);
 
   return (
-    <div className="code-block">
-      <div className="code-header">
-        <span className="code-lang">{language}</span>
-        <button className="code-copy" onClick={copy}>Copy</button>
+    <div className="border border-gray-200 dark:border-[#222] rounded-md overflow-hidden">
+      <div className="flex justify-between items-center px-4 py-2 bg-gray-100 dark:bg-[#0f0f0f] border-b border-gray-200 dark:border-[#222]">
+        <span className="font-mono text-[11px] text-gray-400 dark:text-[#444]">{language}</span>
+        <button
+          onClick={copy}
+          className="text-[11px] text-gray-400 dark:text-[#555] border border-gray-200 dark:border-[#2a2a2a] px-3 py-1 rounded-sm hover:border-gray-600 dark:hover:border-white hover:text-gray-700 dark:hover:text-white transition-colors cursor-pointer"
+        >
+          Copy
+        </button>
       </div>
-      <pre className="code-pre">
-        <code ref={ref} className={`language-${language}`}>
+      <pre className="m-0 p-0 overflow-x-auto text-[13.5px] leading-[1.65]">
+        <code ref={ref} className={`language-${language} !p-5 !rounded-none font-mono`}>
           {code}
         </code>
       </pre>

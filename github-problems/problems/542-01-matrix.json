@@ -3,7 +3,7 @@
   "title": "01 Matrix",
   "difficulty": "Medium",
   "tags": ["BFS", "Dynamic Programming", "Matrix", "Graph"],
-  "description": "Given an `m x n` binary matrix `mat`, return the distance of the nearest `0` for each cell.\n\nThe distance between two adjacent cells is `1`.",
+  "description": "Given an m x n binary matrix mat, return the distance of the nearest 0 for each cell. The distance between two adjacent cells is 1.",
   "examples": [
     {
       "input": "mat = [[0,0,0],[0,1,0],[0,0,0]]",
@@ -24,82 +24,339 @@
     "mat[i][j] is either 0 or 1",
     "There is at least one 0 in mat"
   ],
-  "intuition": "**The naive approach** — for each `1`, run a BFS to find its nearest `0` — is O((m·n)²), which is too slow.\n\n**The key insight**: flip the question. Instead of asking \"how far is the nearest 0 from this 1?\", ask \"how far does each 0 reach?\"\n\nStart a **multi-source BFS simultaneously from every `0`**. Each 0 begins at distance 0 and expands outward wave by wave. The first time a `1`-cell is reached by the BFS, that distance is guaranteed to be the minimum — because BFS explores in order of increasing distance.\n\nThis is the same trick used in **rotting oranges** and **walls and gates**: when you have multiple sources and want minimum distance to any source, seed all sources at once instead of running separate BFS per cell.",
+  "intuition": "This is a special type of BFS called multi-source BFS. The naive approach — for each 1, run a BFS to find its nearest 0 — is O((m*n)^2), way too slow. The key insight is to flip the question entirely. Instead of asking how far is the nearest 0 from this 1, ask how far does each 0 reach outward. You put ALL the zeros into the queue at once before BFS even starts. Each 0 begins at distance 0 and the BFS wave expands outward simultaneously from every source. The recursive equation that drives everything is dist[nr][nc] = dist[r][c] + 1. Because BFS processes level by level (by increasing distance), the first time any cell is reached, that is guaranteed to be the shortest distance to any 0. This same pattern — seeding all sources at once — appears in Rotting Oranges (LC 994) and Walls and Gates (LC 286). Whenever you see multiple sources and need minimum distance to any one of them, this is your move.",
+  "python_gotchas": [
+    "Use deque and popleft() for O(1) front removal. Using a plain list with list.pop(0) is O(n) per removal and will TLE on large inputs.",
+    "Never write 'while queue is not None' — an empty deque is falsy but not None, so that condition always evaluates True and causes an infinite loop. Write 'while queue:' instead.",
+    "Initialize dist[i][j] = float('inf') for ALL cells first, then set 0-cells to 0. If you initialize everything to 0, the condition dist[nr][nc] > dist[r][c] + 1 is never true (0 > 0+1 is False), so nothing ever gets updated and you return a matrix of all zeros.",
+    "The condition dist[nr][nc] > dist[r][c] + 1 does double duty: it skips already-settled cells (acting as a visited check) AND ensures only shorter-path updates are enqueued. You do not need a separate visited set.",
+    "Access directions as d[0] and d[1] when dirs is a list of lists, or unpack with dr, dc if dirs is a list of tuples. Mixing styles causes IndexError."
+  ],
   "approach": {
     "name": "Multi-source BFS",
     "steps": [
-      "Scan the entire matrix. For each 0-cell, set dist[i][j] = 0 and push (i, j) into the BFS queue.",
-      "For every 1-cell, set dist[i][j] = infinity initially.",
-      "Run BFS. For each cell dequeued at distance d, check its 4 neighbors.",
-      "If a neighbor's current distance > d + 1, update it to d + 1 and enqueue it.",
-      "Because BFS visits by level, the first update to any cell is always the shortest path.",
-      "Return the dist matrix."
+      "Initialize dist matrix with float('inf') for all cells.",
+      "Scan the entire matrix. For each 0-cell, set dist[i][j] = 0 and push (i, j) into the deque queue.",
+      "Run BFS. For each cell (r, c) dequeued, check all 4 neighbors using the dirs offsets.",
+      "For each neighbor (nr, nc), first validate bounds: 0 <= nr < rows and 0 <= nc < cols.",
+      "If dist[nr][nc] > dist[r][c] + 1, update dist[nr][nc] and enqueue (nr, nc).",
+      "Because BFS processes level by level, the first update to any cell is always the shortest. The condition prevents re-enqueueing already-settled cells.",
+      "Return dist when queue is empty."
     ]
   },
   "code": {
     "language": "python",
-    "solution": "from collections import deque\n\ndef updateMatrix(mat: list[list[int]]) -> list[list[int]]:\n    m, n = len(mat), len(mat[0])\n    dist = [[float('inf')] * n for _ in range(m)]\n    queue = deque()\n\n    # Seed BFS from every 0\n    for i in range(m):\n        for j in range(n):\n            if mat[i][j] == 0:\n                dist[i][j] = 0\n                queue.append((i, j))\n\n    dirs = [(0, 1), (0, -1), (1, 0), (-1, 0)]\n\n    while queue:\n        r, c = queue.popleft()\n        for dr, dc in dirs:\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < m and 0 <= nc < n:\n                # Only update if we found a shorter path\n                if dist[nr][nc] > dist[r][c] + 1:\n                    dist[nr][nc] = dist[r][c] + 1\n                    queue.append((nr, nc))\n\n    return dist\n\n# Time:  O(m * n)  — each cell enqueued at most once\n# Space: O(m * n)  — dist matrix + queue"
+    "solution": "from collections import deque\n\n# Intuition\n# This is a special type of bfs where we process multiple points\n# put all the zeros into the queue\n# then process from the queue as dist[i][j] + 1 — this is the recursive equation\n# that you'll need to understand to implement this bfs\n\nclass Solution:\n    def updateMatrix(self, mat: List[List[int]]) -> List[List[int]]:\n        dirs = [[1,0],[-1,0],[0,1],[0,-1]]\n        queue = deque()\n        # PY: we can also do a list pop list.pop(0) which is pop first element - Time Complexity of O(n)\n        # therefore a good alternative is to use deque to do it in O(1)\n\n        rows = len(mat)\n        cols = len(mat[0])\n\n        dist = [[float('inf') for j in range(cols)] for i in range(rows)]\n\n        # add all the positions of zero into the queue\n        for i in range(rows):\n            for j in range(cols):\n                if mat[i][j] == 0:\n                    queue.append((i, j))\n                    dist[i][j] = 0\n\n        # process queue until it's empty\n        while queue:\n        # PY: when you write 'while queue is not None:' it will run into an infinite loop!!!\n            r, c = queue.popleft()  # popleft is like the method that we do in java like popfirst\n            for d in dirs:\n                nr = r + d[0]\n                nc = c + d[1]\n\n                if 0 <= nr < rows and 0 <= nc < cols:  # valid bound range\n                    if dist[nr][nc] > dist[r][c] + 1:  # key: infinity check AND greater distance check\n                        dist[nr][nc] = dist[r][c] + 1\n                        queue.append((nr, nc))  # add the new position into queue\n\n        return dist\n\n        # what can horribly go wrong in the condition check:\n        # dist[nr][nc] > dist[r][c] + 1 covers TWO things:\n        # 1. avoids nodes being processed again (visited check)\n        # 2. retains the shortest path check\n        # so we only process a neighbor if we have a SHORTER path to offer it!\n\n        # time complexity:  O(m x n) — each cell enqueued at most once\n        # space complexity: O(m x n) — dist matrix + queue"
+  },
+  "alternate_approach": {
+    "name": "Dynamic Programming (Two-Pass)",
+    "description": "An O(m*n) DP solution also exists. First pass goes top-to-bottom, left-to-right, updating dist[i][j] from its top and left neighbors: dist[i][j] = min(dist[i][j], dist[i-1][j]+1, dist[i][j-1]+1). Second pass goes bottom-to-top, right-to-left, propagating distances from the bottom and right neighbors. Both passes together cover all 4 directions. No queue needed. BFS is generally more intuitive; DP is leaner on overhead.",
+    "when_to_prefer": "If you want to avoid BFS queue overhead and are comfortable reasoning about two-pass DP sweeps. Both are O(m*n) time and space."
+  },
+  "complexity": {
+    "time": "O(m * n) — each cell is enqueued and dequeued at most once",
+    "space": "O(m * n) — dist matrix of size m*n plus the BFS queue which holds at most m*n elements"
   },
   "mcqs": [
     {
       "id": 1,
-      "question": "Why do we initialize the BFS queue with ALL 0-cells at the start, rather than running a separate BFS from each 0?",
+      "question": "Why do we put ALL 0-cells into the queue before starting BFS, instead of running a separate BFS from each 0?",
       "options": [
-        "To reduce space complexity from O(m·n) to O(1)",
-        "Multi-source BFS gives every cell the minimum distance to ANY 0 in a single O(m·n) pass",
-        "Single-source BFS doesn't work on binary matrices",
+        "To reduce space complexity from O(m*n) to O(1)",
+        "Multi-source BFS gives every cell the minimum distance to ANY 0 in a single O(m*n) pass, whereas separate BFS per source would be O((m*n)^2)",
+        "Single-source BFS does not work on binary matrices",
         "It avoids needing a visited array"
       ],
       "answer": 1,
-      "explanation": "Running BFS from each 0 separately would be O((m·n)²) in the worst case. By seeding all 0s simultaneously, the BFS frontier expands outward from all sources at once — the first time any cell is reached is by definition the shortest path to any 0."
+      "explanation": "Running BFS separately from each 0 would be O((m*n)^2) in the worst case. By seeding all 0s simultaneously, the BFS frontier expands outward from all sources at once. The first time any cell is reached is, by definition, the shortest distance to any 0."
     },
     {
       "id": 2,
-      "question": "What is the time complexity of the multi-source BFS solution?",
+      "question": "What is the time complexity of the multi-source BFS solution and why?",
       "options": [
-        "O(m·n·log(m·n))",
-        "O((m·n)²)",
-        "O(m·n)",
-        "O(m + n)"
+        "O(m*n*log(m*n)) due to priority queue",
+        "O((m*n)^2) because we visit every cell for every source",
+        "O(m*n) because each cell is enqueued at most once",
+        "O(m + n) because we only traverse rows and columns"
       ],
       "answer": 2,
-      "explanation": "Each cell is added to the BFS queue at most once (only when a shorter distance is found, and since BFS processes in order, each cell is settled exactly once). With m·n cells each doing O(1) work, total is O(m·n)."
+      "explanation": "Each cell is added to the BFS queue at most once. The condition dist[nr][nc] > dist[r][c] + 1 ensures a cell is only enqueued when we find a strictly shorter path, and since BFS processes in level order, each cell is settled exactly once. With m*n cells each doing O(1) work, total is O(m*n)."
     },
     {
       "id": 3,
-      "question": "What happens if you initialize dist[i][j] = 0 for all cells (not just 0s) before running BFS?",
+      "question": "What goes wrong if you initialize dist[i][j] = 0 for ALL cells (not just 0-cells) before running BFS?",
       "options": [
-        "The algorithm still works because BFS corrects the values",
-        "All distances remain 0 — the condition dist[nr][nc] > dist[r][c] + 1 is never true for 1-cells",
-        "It causes an infinite loop",
-        "Only the 0-cells are affected"
+        "The algorithm still works because BFS corrects values as it runs",
+        "All distances remain 0 — the condition dist[nr][nc] > dist[r][c] + 1 is never true, so nothing ever updates",
+        "It causes an infinite loop in the while queue loop",
+        "Only the 0-cells return wrong values; 1-cells are unaffected"
       ],
       "answer": 1,
-      "explanation": "If every cell starts at 0, then for any neighbor: 0 > 0 + 1 is false, so no cell ever gets updated. You'd return a matrix of all zeros. The infinity initialization for 1-cells is what allows BFS to propagate real distances."
+      "explanation": "If every cell starts at 0, then for any neighbor check: 0 > 0 + 1 evaluates to False. No cell ever gets updated. You return an all-zeros matrix. Initializing 1-cells to infinity is what allows the BFS to propagate real distances outward."
     },
     {
       "id": 4,
-      "question": "Which other LeetCode problem uses the exact same multi-source BFS pattern?",
+      "question": "The condition 'dist[nr][nc] > dist[r][c] + 1' does two jobs at once. What are they?",
       "options": [
-        "Two Sum (LC 1)",
-        "Rotting Oranges (LC 994)",
-        "Binary Search (LC 704)",
-        "Longest Common Subsequence (LC 1143)"
+        "Validates bounds and checks for negative distances",
+        "Acts as a visited/already-settled check AND ensures only a shorter-path update gets enqueued",
+        "Prevents queue overflow and checks matrix dimensions",
+        "Handles the 0-cell seed and the 1-cell propagation separately"
       ],
       "answer": 1,
-      "explanation": "Rotting Oranges seeds BFS from all rotten oranges simultaneously and spreads outward — identical pattern. 'Walls and Gates' (LC 286) is another classic example of the same technique."
+      "explanation": "If dist[nr][nc] is already small (settled by a previous BFS wave), the condition is False and we skip it — acting as a visited check. If dist[nr][nc] is still infinity or larger, we update it — this is the shortest-path propagation. You do not need a separate visited set because this single condition handles both."
     },
     {
       "id": 5,
-      "question": "Can this problem be solved with dynamic programming instead of BFS?",
+      "question": "Why should you use deque and popleft() instead of a plain list with list.pop(0)?",
       "options": [
-        "No — DP cannot solve shortest-path problems on grids",
-        "Yes — two passes (top-left to bottom-right, then bottom-right to top-left) correctly propagate minimum distances",
-        "Yes — but only for square matrices",
-        "No — DP requires the graph to be a DAG"
+        "deque supports negative indexing; list does not",
+        "list.pop(0) is O(n) per call because it shifts all remaining elements; deque.popleft() is O(1)",
+        "deque is thread-safe; list is not",
+        "list.pop(0) removes from the wrong end"
       ],
       "answer": 1,
-      "explanation": "A DP solution works with two passes: first sweep top→bottom, left→right updating dist[i][j] = min(dist[i][j], dist[i-1][j]+1, dist[i][j-1]+1). Then sweep bottom→top, right→left for the remaining directions. Both BFS and DP give O(m·n) time."
+      "explanation": "A Python list is backed by a dynamic array. pop(0) must shift every remaining element left, which is O(n). For BFS on a 10^4 cell matrix this can cause a TLE. deque is a doubly-linked structure that removes from either end in O(1)."
+    },
+    {
+      "id": 6,
+      "question": "What happens if you write 'while queue is not None:' instead of 'while queue:'?",
+      "options": [
+        "It works the same; both check for an empty queue",
+        "It raises a TypeError because deque cannot be compared with None",
+        "It runs into an infinite loop because an empty deque is falsy but never None",
+        "It exits immediately because deque() is not None evaluates to False"
+      ],
+      "answer": 2,
+      "explanation": "An empty deque() is falsy (bool(deque()) == False) but is never None. So 'deque() is not None' is always True, and the while loop never terminates. Always use 'while queue:' to check emptiness."
+    },
+    {
+      "id": 7,
+      "question": "Which other LeetCode problems use the exact same multi-source BFS pattern?",
+      "options": [
+        "Two Sum (LC 1) and Binary Search (LC 704)",
+        "Rotting Oranges (LC 994) and Walls and Gates (LC 286)",
+        "Merge Intervals (LC 56) and Jump Game (LC 55)",
+        "Longest Common Subsequence (LC 1143) and Edit Distance (LC 72)"
+      ],
+      "answer": 1,
+      "explanation": "Rotting Oranges seeds BFS from all initially rotten oranges simultaneously and spreads the rot outward — identical pattern. Walls and Gates seeds from all gates (value 0) and propagates distances to empty rooms. Both are classic multi-source BFS problems."
+    },
+    {
+      "id": 8,
+      "question": "Can this problem be solved with DP instead of BFS?",
+      "options": [
+        "No — DP cannot handle shortest-path problems on grids",
+        "Yes — two passes (top-left to bottom-right, then bottom-right to top-left) correctly propagate minimum distances in O(m*n)",
+        "Yes — but only for square matrices where m == n",
+        "No — DP requires the graph to be a DAG with no cycles"
+      ],
+      "answer": 1,
+      "explanation": "A DP solution works with two passes. First sweep top-to-bottom, left-to-right: dist[i][j] = min(dist[i][j], dist[i-1][j]+1, dist[i][j-1]+1). Then sweep bottom-to-top, right-to-left for the remaining two directions. Both BFS and DP give O(m*n) time and space."
+    },
+    {
+      "id": 9,
+      "question": "In the DP two-pass approach, why do you need BOTH a forward pass AND a backward pass?",
+      "options": [
+        "The forward pass handles 0-cells and the backward pass handles 1-cells",
+        "Each pass only propagates distances from two directions (top and left, or bottom and right); both passes together cover all four directions",
+        "The backward pass corrects overflow errors introduced by the forward pass",
+        "One pass is for rows and the other is for columns"
+      ],
+      "answer": 1,
+      "explanation": "A single top-to-bottom left-to-right pass can only see distances coming from above and from the left. A 1-cell that needs to look down or to the right for its nearest 0 would be missed. The second pass bottom-to-top right-to-left propagates those remaining two directions. Together they cover all four."
+    },
+    {
+      "id": 10,
+      "question": "What is the space complexity of the BFS solution and what contributes to it?",
+      "options": [
+        "O(1) — we update dist in place with no extra structures",
+        "O(m + n) — only the BFS frontier at one level is stored",
+        "O(m*n) — the dist matrix of size m*n and the queue which can hold up to m*n elements",
+        "O(log(m*n)) — BFS uses a binary heap internally"
+      ],
+      "answer": 2,
+      "explanation": "The dist matrix is m*n. The BFS deque in the worst case (e.g., a checkerboard pattern) can hold O(m*n) elements simultaneously. Both contributions are O(m*n), so total space is O(m*n)."
+    },
+    {
+      "id": 11,
+      "question": "What is the initial value of dist[i][j] for a 0-cell, and why does that make sense?",
+      "options": [
+        "float('inf'), because we do not know the distance yet",
+        "1, because the 0-cell is one step from itself",
+        "0, because the 0-cell IS a source and its distance to the nearest 0 is 0",
+        "-1, as a sentinel to mark it as already processed"
+      ],
+      "answer": 2,
+      "explanation": "A 0-cell is itself a zero, so its distance to the nearest 0 is trivially 0. Setting dist[i][j] = 0 and seeding it into the queue means BFS starts expanding from it at distance 0. Any neighbor it reaches first gets distance 1, then 2, and so on."
+    },
+    {
+      "id": 12,
+      "question": "Why does standard BFS (level-order traversal) guarantee the shortest distance, unlike DFS?",
+      "options": [
+        "BFS uses a stack which backtracks efficiently; DFS uses a queue which does not",
+        "BFS explores nodes in order of increasing distance from the source, so the first time a node is visited it is via the shortest path",
+        "DFS visits nodes in alphabetical order which is not distance-optimal",
+        "BFS prunes branches using memoization; DFS does not"
+      ],
+      "answer": 1,
+      "explanation": "BFS uses a FIFO queue. All nodes at distance d are fully processed before any node at distance d+1 is processed. So the first time BFS reaches a cell, it is via the fewest steps. DFS goes deep first and may reach a cell via a long path before ever trying the short one."
+    },
+    {
+      "id": 13,
+      "question": "What is the bounds check '0 <= nr < rows and 0 <= nc < cols' protecting against?",
+      "options": [
+        "Preventing dist values from going negative",
+        "Preventing IndexError from accessing matrix positions that are outside the grid",
+        "Ensuring we only process 1-cells and skip 0-cells",
+        "Checking that the BFS queue does not exceed memory limits"
+      ],
+      "answer": 1,
+      "explanation": "When processing a cell at the edge of the matrix, its neighbors in some directions would have negative indices or indices >= rows or cols. Accessing those would cause an IndexError in Python (or silent wrong results). The bounds check filters those invalid neighbors out before accessing dist."
+    },
+    {
+      "id": 14,
+      "question": "If the matrix were all 0s, what would the output be?",
+      "options": [
+        "A matrix of all float('inf')",
+        "A matrix of all 1s",
+        "A matrix of all 0s, since every cell is itself a 0",
+        "An error — the problem states there must be at least one 1"
+      ],
+      "answer": 2,
+      "explanation": "Every cell is a 0 and therefore a source. dist[i][j] is set to 0 for all cells. No 1-cells exist to be updated. BFS runs but dist[nr][nc] > dist[r][c] + 1 (0 > 0+1) is always False, so nothing changes. Correct output is all zeros. The constraints guarantee at least one 0 but do not require at least one 1."
+    },
+    {
+      "id": 15,
+      "question": "If the matrix were all 1s (hypothetically ignoring the constraint that at least one 0 exists), what would happen?",
+      "options": [
+        "The BFS queue starts empty; no 0-cell is ever seeded; dist remains all float('inf'); the output is wrong",
+        "BFS would correctly assign distance 0 to all cells",
+        "Python would raise a ValueError when initializing the queue",
+        "The algorithm would run in O(1) because the queue is empty"
+      ],
+      "answer": 0,
+      "explanation": "If no 0-cell exists, the seeding loop adds nothing to the queue. BFS never runs. dist remains all float('inf'). The output would be a matrix of infinities — incorrect. This is why the problem guarantees at least one 0: the algorithm's correctness depends on it."
+    },
+    {
+      "id": 16,
+      "question": "In the code, dirs is defined as [[1,0],[-1,0],[0,1],[0,-1]]. What movement do these four direction vectors represent?",
+      "options": [
+        "Diagonal movements: down-right, up-left, up-right, down-left",
+        "Down, Up, Right, Left — the four cardinal grid directions",
+        "Row-major traversal: forward and backward, then column forward and backward",
+        "Clockwise rotation: right, down, left, up"
+      ],
+      "answer": 1,
+      "explanation": "[1,0] increments the row (move down), [-1,0] decrements the row (move up), [0,1] increments the column (move right), [0,-1] decrements the column (move left). These four offsets cover all valid adjacent cells in a grid."
+    },
+    {
+      "id": 17,
+      "question": "Could you use Dijkstra's algorithm instead of BFS for this problem? What would the tradeoff be?",
+      "options": [
+        "Yes, and Dijkstra would be faster — O(m*n) versus BFS's O((m*n)^2)",
+        "Yes, but Dijkstra would be slower — O(m*n*log(m*n)) versus BFS's O(m*n), because all edge weights here are uniform (1), making BFS optimal",
+        "No — Dijkstra does not work on grid graphs",
+        "No — Dijkstra requires a directed graph; this is undirected"
+      ],
+      "answer": 1,
+      "explanation": "Dijkstra is the general shortest-path algorithm for weighted graphs. When all edge weights are equal (as here, all adjacency costs = 1), BFS is equivalent to Dijkstra but without the log(n) overhead of the priority heap. BFS is the simpler, faster choice on unweighted grids."
+    },
+    {
+      "id": 18,
+      "question": "What would happen if you enqueued a neighbor WITHOUT the condition 'dist[nr][nc] > dist[r][c] + 1'?",
+      "options": [
+        "Nothing changes; the condition is optional since BFS visits level by level anyway",
+        "Every neighbor gets enqueued every time it is encountered, causing redundant processing and inflating queue size, though output may still be correct but slower",
+        "The algorithm immediately returns the wrong result",
+        "Python raises a RecursionError"
+      ],
+      "answer": 1,
+      "explanation": "Without the guard, a cell could be enqueued multiple times (once per neighbor that reaches it). It would not cause incorrect output because BFS still processes in level order, but the queue could grow to O((m*n)^2) entries, destroying the O(m*n) guarantee and causing TLE."
+    },
+    {
+      "id": 19,
+      "question": "The problem says distance between two ADJACENT cells is 1. Diagonal cells are NOT adjacent. What would you change in the code to also allow diagonal movement?",
+      "options": [
+        "Change the BFS to DFS",
+        "Add the four diagonal direction vectors [1,1],[-1,-1],[1,-1],[-1,1] to the dirs list — everything else stays the same",
+        "Divide all distances by sqrt(2) to account for diagonal Euclidean distance",
+        "Use Dijkstra with edge weight sqrt(2) for diagonals"
+      ],
+      "answer": 1,
+      "explanation": "The dirs list is the only thing that controls which neighbors are explored. Adding [1,1],[-1,-1],[1,-1],[-1,1] gives 8-directional movement. The BFS logic, bounds check, and update condition are all direction-agnostic and work unchanged."
+    },
+    {
+      "id": 20,
+      "question": "Why is the multi-source BFS approach described as 'flipping the question'?",
+      "options": [
+        "It transposes the matrix before processing",
+        "Instead of asking 'how far is the nearest 0 from each 1', it asks 'how far does each 0 expand outward', which eliminates redundant work",
+        "It reverses the BFS direction by starting from 1-cells instead of 0-cells",
+        "It swaps rows and columns during traversal"
+      ],
+      "answer": 1,
+      "explanation": "The naive framing asks: for each 1-cell, find the nearest 0. That means a separate BFS per 1-cell. The flipped framing asks: starting from all 0s simultaneously, how far does the BFS wave travel before touching each 1? Same answer, one pass. This reframing is the core insight of multi-source BFS."
+    },
+    {
+      "id": 21,
+      "question": "After BFS completes, what is the value of dist[i][j] for a 0-cell in the original matrix?",
+      "options": [
+        "float('inf') because 0-cells are skipped during BFS",
+        "1 because each 0-cell is adjacent to at least one other cell",
+        "0 because the nearest 0 to a 0-cell is itself",
+        "Undefined — the problem only guarantees answers for 1-cells"
+      ],
+      "answer": 2,
+      "explanation": "0-cells are seeded with dist = 0 before BFS. BFS only UPDATES a cell if we find a shorter distance. Since dist[i][j] = 0 for 0-cells, no BFS neighbor will ever produce a shorter (negative) distance. So 0-cells always finish with dist = 0. Correct, since a 0-cell is distance 0 from itself."
+    },
+    {
+      "id": 22,
+      "question": "How does this BFS avoid needing a separate 'visited' boolean array?",
+      "options": [
+        "It uses the original mat array to mark visited cells",
+        "The dist array itself serves as the visited marker: a cell with dist < infinity has already been settled and the condition dist[nr][nc] > dist[r][c] + 1 will be False, preventing re-enqueueing",
+        "Python's deque automatically deduplicates entries",
+        "The bounds check 0 <= nr < rows and 0 <= nc < cols prevents revisiting"
+      ],
+      "answer": 1,
+      "explanation": "Once a cell's dist is set to its true minimum, no subsequent BFS wave can produce a smaller value (BFS processes in increasing distance order). The update condition dist[nr][nc] > dist[r][c] + 1 returns False for any settled cell, so it is never re-enqueued. The dist matrix doubles as visited state."
+    },
+    {
+      "id": 23,
+      "question": "Consider a 1x1 matrix [[0]]. What does the algorithm return?",
+      "options": [
+        "[[float('inf')]] because no BFS expansion occurs",
+        "[[1]] because a cell is always distance 1 from itself",
+        "[[0]] because the single cell is a 0-cell and its distance to the nearest 0 is 0",
+        "An IndexError because there are no neighbors to process"
+      ],
+      "answer": 2,
+      "explanation": "The 0-cell is seeded into the queue with dist = 0. The BFS loop runs once, dequeues (0,0), checks its four neighbors — all of which fail the bounds check since rows=cols=1. Queue empties. We return [[0]]. No error, correct output."
+    },
+    {
+      "id": 24,
+      "question": "In terms of BFS 'levels', what does each level of the BFS wave represent?",
+      "options": [
+        "Each level represents one row of the matrix",
+        "Each level represents all cells at the same distance from their nearest 0; processing level d before level d+1 guarantees shortest distances",
+        "Each level represents one connected component of 0-cells",
+        "Each level represents one iteration of the for d in dirs loop"
+      ],
+      "answer": 1,
+      "explanation": "BFS level 0 is all 0-cells (distance 0). Level 1 is all cells reachable from a 0 in exactly 1 step (distance 1). Level 2 is all cells reachable in exactly 2 steps, and so on. Processing strictly by level is what gives BFS its shortest-path property — a cell at level d cannot have been reachable in fewer than d steps."
+    },
+    {
+      "id": 25,
+      "question": "What is the worst-case size of the BFS queue during execution, and in what matrix configuration does this occur?",
+      "options": [
+        "O(1) — only one cell is in the queue at a time",
+        "O(m + n) — only the current BFS frontier (one diagonal band) is in the queue",
+        "O(m*n) — in the worst case (e.g., all cells are 0), all cells are enqueued during initialization",
+        "O((m*n)^2) — because each cell can be enqueued by up to 4 neighbors"
+      ],
+      "answer": 2,
+      "explanation": "If every cell is a 0, all m*n cells are enqueued in the initialization loop before BFS even starts. During BFS, each cell is enqueued at most once due to the dist guard. So peak queue size is O(m*n). This is why space complexity is O(m*n)."
     }
   ]
 }
