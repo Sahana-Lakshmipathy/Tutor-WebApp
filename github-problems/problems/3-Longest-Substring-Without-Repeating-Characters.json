@@ -1,0 +1,420 @@
+{
+  "id": "3",
+  "title": "Longest Substring Without Repeating Characters",
+  "difficulty": "Medium",
+  "tags": ["Sliding Window", "Hash Map", "Two Pointers", "String"],
+  "description": "Given a string s, find the length of the longest substring without repeating characters.",
+  "examples": [
+    {
+      "input": "s = \"abcabcbb\"",
+      "output": "3",
+      "explanation": "The answer is 'abc' with length 3."
+    },
+    {
+      "input": "s = \"bbbbb\"",
+      "output": "1",
+      "explanation": "The answer is 'b' with length 1."
+    },
+    {
+      "input": "s = \"pwwkew\"",
+      "output": "3",
+      "explanation": "The answer is 'wke' with length 3. 'pwke' is a subsequence, not a substring."
+    },
+    {
+      "input": "s = \"\"",
+      "output": "0",
+      "explanation": "Empty string — no substring exists."
+    },
+    {
+      "input": "s = \"abba\"",
+      "output": "2",
+      "explanation": "Tricky case. After 'ab', we see 'b' again and shrink. Then 'a' is seen again but its last index is OUTSIDE the window — so it is not a duplicate within the current window."
+    }
+  ],
+  "constraints": [
+    "0 <= s.length <= 5 * 10^4",
+    "s consists of English letters, digits, symbols, and spaces"
+  ],
+  "intuition": "Use a sliding window with a left and right pointer. The window [left, i] represents the current substring under consideration. As the right pointer (i) advances character by character, we check if the new character is already inside the current window. If it is not — great, extend the window. If it IS a duplicate inside the window — jump the left pointer just past the previous occurrence of this character, shrinking the window to remove the duplicate. The key data structure is a hash map storing each character's most recent index. The clever insight: when we see a duplicate, we do not move left one step at a time — we jump it directly to prev_index + 1 in O(1). One critical guard: 'seen[char] >= left'. A character might be in the map from a very old window that left has already moved past. In that case the character is NOT a duplicate in the current window — do not move left backward. Always update seen[char] = i regardless, and update max_len = i - left + 1 at every step.",
+  "why_seen_char_geq_left": "This is the most important guard in the code. The seen map stores the last known index of every character ever seen — including characters that left has already passed. If seen[char] < left, the previous occurrence is outside the current window and is not a duplicate. Moving left to seen[char] + 1 would move it BACKWARD, which is wrong and would allow duplicates. The guard ensures we only shrink the window when the duplicate is genuinely inside [left, i-1].",
+  "why_update_always": "seen[char] = i is executed unconditionally — whether or not the character was a duplicate. If we skipped the update on duplicates, the map would hold a stale old index. The next time this character appears, we would jump left to the wrong position.",
+  "window_length_formula": "At any index i with left pointer at left, the window is [left, i] which contains i - left + 1 characters. The +1 is because both ends are inclusive. Window length = i - left + 1.",
+  "core_invariant": "At every iteration after the update, the window [left, i] contains no duplicate characters. left is always the start of the largest valid window ending at i.",
+  "approach": {
+    "name": "Sliding window with last-seen hash map",
+    "steps": [
+      "Initialize seen = {} (empty map), left = 0, max_len = 0.",
+      "For each index i and char in the string:",
+      "  If char is in seen AND seen[char] >= left: a duplicate exists inside the current window. Move left = seen[char] + 1.",
+      "  Update seen[char] = i unconditionally — always record the latest index.",
+      "  Update max_len = max(max_len, i - left + 1).",
+      "Return max_len."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "class Solution:\n    def lengthOfLongestSubstring(self, s: str) -> int:\n        seen = {}      # char -> last seen index\n        left = 0       # left boundary of current window\n        max_len = 0\n\n        for i, char in enumerate(s):\n\n            if char in seen and seen[char] >= left:\n                # duplicate found INSIDE the current window\n                # jump left just past the previous occurrence\n                left = seen[char] + 1\n\n            # always update to the latest index — no matter what\n            seen[char] = i\n\n            max_len = max(max_len, i - left + 1)\n\n        return max_len\n\n        # Time Complexity:  O(n) — one pass, O(1) hash map operations per character\n        # Space Complexity: O(min(n, alphabet)) — at most min(n, 128) entries for ASCII"
+  },
+  "complexity": {
+    "time": "O(n) — single pass through the string. Each character is processed once. Hash map lookup and update are O(1) average.",
+    "space": "O(min(n, |alphabet|)) — the seen map stores at most one entry per unique character. For ASCII this is at most 128 entries regardless of n. For a string of all unique characters it is min(n, 128)."
+  },
+  "full_trace": {
+    "input": "\"abcabcbb\"",
+    "steps": [
+      "i=0 char='a': not in seen. seen={'a':0}. window=[0,0]. max_len=1.",
+      "i=1 char='b': not in seen. seen={'a':0,'b':1}. window=[0,1]. max_len=2.",
+      "i=2 char='c': not in seen. seen={'a':0,'b':1,'c':2}. window=[0,2]. max_len=3.",
+      "i=3 char='a': in seen, seen['a']=0 >= left=0. left=0+1=1. seen={'a':3,'b':1,'c':2}. window=[1,3]. max_len=3.",
+      "i=4 char='b': in seen, seen['b']=1 >= left=1. left=1+1=2. seen={'a':3,'b':4,'c':2}. window=[2,4]. max_len=3.",
+      "i=5 char='c': in seen, seen['c']=2 >= left=2. left=2+1=3. seen={'a':3,'b':4,'c':5}. window=[3,5]. max_len=3.",
+      "i=6 char='b': in seen, seen['b']=4 >= left=3. left=4+1=5. seen={'a':3,'b':6,'c':5}. window=[5,6]. max_len=3.",
+      "i=7 char='b': in seen, seen['b']=6 >= left=5. left=6+1=7. seen={'a':3,'b':7,'c':5}. window=[7,7]. max_len=3.",
+      "Return 3."
+    ]
+  },
+  "abba_trace": {
+    "input": "\"abba\"",
+    "why_tricky": "After processing 'b' at i=2, left moves to 2. Then at i=3, char='a' is in seen with seen['a']=0, but 0 < left=2. The guard seen[char] >= left prevents a backward move. Left stays at 2.",
+    "steps": [
+      "i=0 char='a': not in seen. seen={'a':0}. left=0. max_len=1.",
+      "i=1 char='b': not in seen. seen={'a':0,'b':1}. left=0. max_len=2.",
+      "i=2 char='b': in seen, seen['b']=1 >= left=0. left=2. seen={'a':0,'b':2}. window=[2,2]. max_len=2.",
+      "i=3 char='a': in seen, seen['a']=0. BUT 0 < left=2. Guard fails — do NOT move left. seen={'a':3,'b':2}. window=[2,3]. max_len=2.",
+      "Return 2."
+    ]
+  },
+  "alternate_set_approach": {
+    "description": "Use a set instead of a map. When a duplicate is found, shrink from the left one step at a time (removing s[left] from the set) until the duplicate is gone. Then add the new character.",
+    "code": "def lengthOfLongestSubstring(s):\n    seen = set()\n    left = 0\n    max_len = 0\n    for i, char in enumerate(s):\n        while char in seen:\n            seen.remove(s[left])\n            left += 1\n        seen.add(char)\n        max_len = max(max_len, i - left + 1)\n    return max_len",
+    "tradeoff": "O(n) time amortized (each character removed at most once) but O(n) worst case for the inner while loop per step versus O(1) per step for the map approach. The map approach is strictly faster in practice because it jumps left directly instead of stepping one at a time."
+  },
+  "python_gotchas": [
+    "The condition is 'char in seen AND seen[char] >= left' — both parts are needed. 'char in seen' alone would jump left backward for stale entries. 'seen[char] >= left' alone would throw a KeyError if char is not in seen.",
+    "seen[char] = i runs unconditionally — after the if block, not inside either branch. A common mistake is putting it only in the else branch, leaving stale indices for characters that caused a duplicate match.",
+    "i - left + 1 not i - left: the window [left, i] is inclusive on both ends. Length = end - start + 1. Forgetting +1 undercounts by 1.",
+    "left should NEVER move backward. The guard seen[char] >= left enforces this. If you remove the guard and left could decrease, the window could contain duplicates — breaking the invariant.",
+    "For an empty string s = '', enumerate(s) produces zero iterations, max_len stays 0, return 0. Handled automatically — no special case needed.",
+    "seen is a dict mapping char to its LAST seen index. It is NOT a set. Using a set is a valid alternative but requires the slower one-step-at-a-time shrinking approach."
+  ],
+  "related_problems": [
+    {
+      "title": "Longest Substring with At Most K Distinct Characters (LC 340)",
+      "relation": "Direct generalization — allow up to k distinct characters instead of requiring all unique. Same sliding window structure, but shrink when the number of distinct characters in the window exceeds k."
+    },
+    {
+      "title": "Longest Substring with At Most Two Distinct Characters (LC 159)",
+      "relation": "Special case of LC 340 with k=2. Same pattern."
+    },
+    {
+      "title": "Minimum Window Substring (LC 76)",
+      "relation": "Harder sliding window — find the minimum window in s containing all characters of t. Uses a similar expand-right, shrink-left two-pointer structure with a frequency map."
+    },
+    {
+      "title": "Find All Anagrams in a String (LC 438)",
+      "relation": "Fixed-size sliding window with character frequency matching. Same two-pointer structure but window size is fixed."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "What does the condition 'seen[char] >= left' guard against, and what would go wrong without it?",
+      "options": [
+        "It prevents the map from being updated unnecessarily",
+        "It prevents left from moving backward. Without it, a character last seen before the current window (seen[char] < left) would cause left to jump to seen[char]+1, which is behind its current position — introducing duplicates into the window.",
+        "It handles the empty string edge case",
+        "It ensures seen[char] is always a valid index"
+      ],
+      "answer": 1,
+      "explanation": "The seen map persists entries from old windows. If 'a' was last seen at index 0 but left is now at 5, 'a' is not in the current window [5..i]. Without the guard, seeing 'a' again would move left to 1 — behind 5 — and the window [1..i] could contain the earlier duplicate. The guard ensures left only moves forward, maintaining the no-duplicate invariant."
+    },
+    {
+      "id": 2,
+      "question": "Why is seen[char] = i executed unconditionally (outside the if block)?",
+      "options": [
+        "To reset the map on every iteration",
+        "Because we always want the map to hold the LATEST index of each character, whether it was a duplicate or not. Putting the update inside the if-else would leave stale indices for non-duplicate characters or fail to update duplicates after moving left.",
+        "Because Python requires dict updates outside conditional blocks",
+        "To avoid a KeyError when char is not in the map"
+      ],
+      "answer": 1,
+      "explanation": "Regardless of whether char caused a window shrink, we always record its new position. If we only updated in one branch: (a) if only updated on duplicates, non-duplicates would never enter the map — breaking future checks; (b) if only updated on non-duplicates, duplicate characters would have stale indices — the next occurrence would compute the wrong left jump. Always update is the only correct behavior."
+    },
+    {
+      "id": 3,
+      "question": "What does i - left + 1 compute, and why the +1?",
+      "options": [
+        "The index of the rightmost character — +1 to convert from 0-indexed",
+        "The length of the current window [left, i]. Both endpoints are inclusive. Length = end - start + 1. Without +1, a single-character window (left==i) would compute length 0 instead of 1.",
+        "The distance from the duplicate to the current character",
+        "The number of unique characters seen so far"
+      ],
+      "answer": 1,
+      "explanation": "Window [left, i] contains the characters at indices left, left+1, ..., i. Count: i - left + 1. Example: [3, 5] contains indices 3,4,5 — that is 5-3+1=3 characters. If you compute i-left (without +1), window [3,5] gives 2 — off by one. The +1 accounts for the inclusive nature of both endpoints."
+    },
+    {
+      "id": 4,
+      "question": "Trace s = \"abba\". At i=3 (char='a'), what happens to left and why?",
+      "options": [
+        "left moves to 1 because seen['a'] = 0 and left = 0+1 = 1",
+        "left stays at 2. seen['a'] = 0 < left = 2, so the guard 'seen[char] >= left' fails. 'a' is outside the current window and is NOT a duplicate within it.",
+        "left moves to 0, rewinding to the start",
+        "left moves to 4, past the end of the string"
+      ],
+      "answer": 1,
+      "explanation": "After processing 'bb' at indices 1-2: left = 2 (jumped past the first 'b'). At i=3, char='a', seen['a']=0. The check: is 0 >= left=2? No. Guard fails. left stays at 2. The window is [2,3] = 'ba' — no duplicates. seen['a'] updated to 3. max_len = max(2, 3-2+1) = max(2,2) = 2. This is the classic trap case."
+    },
+    {
+      "id": 5,
+      "question": "What is the time complexity and why is it O(n) not O(n^2)?",
+      "options": [
+        "O(n^2) — the left pointer can jump backward causing repeated work",
+        "O(n) — the right pointer i visits each character exactly once (one pass). The left pointer only moves forward, never backward. Hash map operations are O(1). Total work is proportional to n.",
+        "O(n log n) — the max operation inside the loop adds log n",
+        "O(n * alphabet_size) — we check each character against the whole map"
+      ],
+      "answer": 1,
+      "explanation": "Key insight: left only ever moves forward (the guard prevents backward movement). So across the entire algorithm, left moves at most n steps total. Right (i) moves exactly n steps. Total pointer movements: at most 2n = O(n). Each step does O(1) map work. Python's max() on two integers is O(1). Total: O(n)."
+    },
+    {
+      "id": 6,
+      "question": "What is the space complexity?",
+      "options": [
+        "O(n) — the map can grow to size n",
+        "O(min(n, |alphabet|)) — the map stores at most one entry per unique character. For ASCII strings the map has at most 128 entries regardless of string length.",
+        "O(1) — only three integer variables are used",
+        "O(n^2) — the map stores a pair for every substring"
+      ],
+      "answer": 1,
+      "explanation": "The seen map has at most one entry per distinct character. For standard ASCII (128 characters), this is bounded by 128 regardless of n. For Unicode strings it could be larger. The tightest bound is O(min(n, |alphabet|)) — n because you can't have more unique chars than characters in the string, and |alphabet| as the hard upper bound for the character set."
+    },
+    {
+      "id": 7,
+      "question": "For s = \"bbbbb\", trace the algorithm. What are left and max_len after each step?",
+      "options": [
+        "left never moves. max_len grows to 5.",
+        "i=0: left=0,max=1. i=1: seen['b']=0>=0, left=1,max=1. i=2: seen['b']=1>=1, left=2,max=1. i=3: left=3,max=1. i=4: left=4,max=1. Return 1.",
+        "i=0: left=0,max=1. i=1: left=0,max=2. Window expands for repeated chars.",
+        "Return 5 — all five b's form one valid window."
+      ],
+      "answer": 1,
+      "explanation": "Every 'b' is a duplicate of the previous 'b' within the window. Each time: seen['b'] = previous index >= left, so left jumps to previous_index+1. The window always stays size 1. max_len = 1 throughout. This demonstrates the algorithm correctly handles all-duplicate strings."
+    },
+    {
+      "id": 8,
+      "question": "What is the difference between the map-based approach and the set-based sliding window approach?",
+      "options": [
+        "The map approach is O(n^2); the set approach is O(n)",
+        "The map approach jumps left DIRECTLY to seen[char]+1 in O(1) when a duplicate is found. The set approach shrinks from the left ONE CHARACTER AT A TIME, removing s[left] from the set in a while loop until the duplicate is gone. Both are O(n) amortized but the map approach is faster in practice.",
+        "The set approach handles Unicode; the map approach only handles ASCII",
+        "They are identical — map and set produce the same operations"
+      ],
+      "answer": 1,
+      "explanation": "Map: O(1) left jump. Set: O(k) while loop where k is the number of characters to remove before the duplicate clears. For example, with window 'abcde' and new char 'a', the map jumps left from 0 to 1 instantly. The set would remove 'a' from the set and left++ — one step. But for window 'xxxxxabcde' and new char 'x', the set would loop 6 times. Map is always O(1) per character; set is O(1) amortized."
+    },
+    {
+      "id": 9,
+      "question": "For s = \"dvdf\", what is the output? Trace carefully.",
+      "options": [
+        "2 — only 'vd'",
+        "3 — the window 'vdf' has length 3",
+        "4 — all characters are unique",
+        "1 — 'd' repeats too early"
+      ],
+      "answer": 1,
+      "explanation": "i=0 'd': seen={'d':0},left=0,max=1. i=1 'v': seen={'d':0,'v':1},left=0,max=2. i=2 'd': seen['d']=0>=left=0 -> left=1. seen={'d':2,'v':1},window=[1,2]='vd',max=2. i=3 'f': seen={'d':2,'v':1,'f':3},window=[1,3]='vdf',max=max(2,3)=3. Return 3."
+    },
+    {
+      "id": 10,
+      "question": "Why does the algorithm not need a special case for an empty string?",
+      "options": [
+        "It raises an IndexError for empty strings which is caught internally",
+        "enumerate('') produces zero iterations. The for loop body never runs. max_len stays 0. Return 0. Python's enumerate handles empty iterables gracefully — no special case needed.",
+        "The left=0 initialization handles the empty case",
+        "The max() function returns 0 for empty strings"
+      ],
+      "answer": 1,
+      "explanation": "enumerate('') is an empty iterator — zero iterations. The loop body is never entered. All variables retain their initial values: seen={}, left=0, max_len=0. Return 0. Correct — an empty string has no substring, so the answer is 0. This pattern (initializing to sensible defaults and letting the loop handle zero iterations) eliminates the need for an explicit empty-string check."
+    },
+    {
+      "id": 11,
+      "question": "What would go wrong if you moved the max_len update INSIDE the if block (only when a duplicate is found)?",
+      "options": [
+        "Nothing — max_len only changes when the window changes",
+        "max_len would only update when duplicates are found — missing all the length increases from extending the window with new unique characters. For a string like 'abcde' with no duplicates, max_len would never update and return 0.",
+        "max_len would be computed from the old left value before the jump",
+        "max_len would update correctly since every step either extends or shrinks"
+      ],
+      "answer": 1,
+      "explanation": "max_len must update at EVERY index i — after adjusting left — because the window [left, i] might be the longest we have seen, whether or not a duplicate occurred. For 'abcde': no duplicates found, the if block never runs, max_len never updates, return 0. Incorrect. max_len = max(max_len, i-left+1) belongs outside and after the if block."
+    },
+    {
+      "id": 12,
+      "question": "For s = \"tmmzuxt\", what is the answer?",
+      "options": [
+        "5 — 'mzuxt'",
+        "6 — 'mmzuxt'",
+        "5 — 'mzuxt'. After first 't' and 'm', second 'm' causes shrink. Window grows to 'mzuxt'.",
+        "7 — all characters"
+      ],
+      "answer": 0,
+      "explanation": "i=0 't': seen={'t':0},left=0,max=1. i=1 'm': seen+={'m':1},left=0,max=2. i=2 'm': seen['m']=1>=0, left=2. seen={'t':0,'m':2},max=2. i=3 'z': left=2,max=max(2,2)=2. i=4 'u': left=2,max=3. i=5 'x': left=2,max=4. i=6 't': seen['t']=0 < left=2 -> guard fails, left stays 2. seen['t']=6. window=[2,6]='mzuxt', len=5. max=5. Return 5."
+    },
+    {
+      "id": 13,
+      "question": "Can left ever exceed i in this algorithm?",
+      "options": [
+        "Yes — when many duplicates appear, left overtakes i",
+        "No. left is set to seen[char]+1 when a duplicate is found. The maximum value of seen[char] is i-1 (the immediately preceding index if the same character appeared right before). So left becomes at most i. left == i means a window of size 1. left > i is impossible.",
+        "Yes — for all-same-character strings like 'aaaa'",
+        "Yes — for the empty string edge case"
+      ],
+      "answer": 1,
+      "explanation": "seen[char] holds the last seen index of char, which is at most i-1 (char at the previous index). When we set left = seen[char]+1, left can be at most i. left == i gives window [i,i] of length 1. left cannot exceed i because seen[char] < i always (we record seen[char] = i AFTER the jump, not before). The window always has at least one character."
+    },
+    {
+      "id": 14,
+      "question": "The problem allows digits, symbols, and spaces — not just letters. Does the algorithm need any modification?",
+      "options": [
+        "Yes — the seen dict needs integer keys for non-letter characters",
+        "No — the seen dict uses the character itself as the key. Python dicts accept any hashable key. A space ' ', digit '5', or symbol '@' are all valid dictionary keys. The algorithm works for any character set without modification.",
+        "Yes — spaces should be ignored in the substring",
+        "Yes — Unicode characters require a different hash function"
+      ],
+      "answer": 1,
+      "explanation": "Python dict keys can be any hashable object, and all characters (including spaces, digits, symbols, and Unicode) are hashable strings of length 1. The algorithm treats every character uniformly — no character-type-specific logic. The seen dict stores char -> last_index for any character that appears."
+    },
+    {
+      "id": 15,
+      "question": "What is the sliding window invariant maintained throughout the algorithm?",
+      "options": [
+        "The window [left, i] is sorted in ascending order",
+        "The window [left, i] contains no duplicate characters at all times after the left pointer adjustment. This invariant is maintained by moving left past any duplicate before recording the current character and computing the window length.",
+        "The window [left, i] contains at most 26 characters",
+        "left is always equal to i - max_len"
+      ],
+      "answer": 1,
+      "explanation": "The core invariant: after processing index i, the window [left, i] is a valid substring with all unique characters. It is maintained by: (1) jumping left past any duplicate before the new char is 'officially' part of the window; (2) unconditionally updating seen[char]=i so the map always reflects the current window state. Every max_len update happens on a window satisfying this invariant."
+    },
+    {
+      "id": 16,
+      "question": "How would you modify this for 'Longest Substring with At Most 2 Distinct Characters' (LC 159)?",
+      "options": [
+        "Change the seen map to a set and track two elements",
+        "Instead of shrinking when a character repeats (more than 1 of the same), shrink when the number of DISTINCT keys in seen (for the current window) exceeds 2. Use a frequency map: increment on extend, decrement on shrink, remove key when frequency hits 0. Shrink left while len(freq_map) > 2.",
+        "Run the same algorithm twice and take the minimum",
+        "Change the condition from seen[char] >= left to seen[char] >= left - 1"
+      ],
+      "answer": 1,
+      "explanation": "For at most k distinct characters: maintain a frequency map for the current window. Right pointer extends and increments freq[char]. When len(freq_map) > k, shrink from the left: decrement freq[s[left]], remove s[left] from map if freq reaches 0, left++. This generalizes directly from k=1 (all unique) to any k. The current problem is the special case k=1 per unique character."
+    },
+    {
+      "id": 17,
+      "question": "For s = \"aab\", trace the algorithm step by step.",
+      "options": [
+        "i=0 'a': left=0,max=1. i=1 'a': left=1,max=1. i=2 'b': left=1,max=2. Return 2.",
+        "i=0 'a': left=0,max=1. i=1 'a': left=0,max=2. i=2 'b': left=0,max=3. Return 3.",
+        "Return 1 — 'a' dominates",
+        "Return 3 — all characters are eventually unique"
+      ],
+      "answer": 0,
+      "explanation": "i=0 'a': not in seen. seen={'a':0},left=0,max=1. i=1 'a': seen['a']=0>=left=0 -> left=1. seen={'a':1},window=[1,1],len=1,max=1. i=2 'b': not in seen. seen={'a':1,'b':2},window=[1,2]='ab',len=2,max=2. Return 2."
+    },
+    {
+      "id": 18,
+      "question": "Why is a dict (hash map) used instead of a set for the seen structure?",
+      "options": [
+        "Dicts are faster than sets in Python",
+        "A set only tells you IF a character is in the window. A dict tells you WHERE (last index) the character is in the window. With the index, left can jump directly to seen[char]+1 — an O(1) operation. Without the index, left must increment one step at a time, making the algorithm O(n) amortized but slower in practice.",
+        "Sets cannot store characters — only integers",
+        "Dicts handle duplicates while sets do not"
+      ],
+      "answer": 1,
+      "explanation": "The dict maps char -> last_seen_index. This index is what enables the O(1) left jump: left = seen[char] + 1. A set only provides presence/absence — you can detect a duplicate exists but not WHERE it is, forcing a one-step-at-a-time left shrink until the duplicate is removed. Both are O(n) total, but the dict approach processes each character in O(1) worst case per iteration, not amortized."
+    },
+    {
+      "id": 19,
+      "question": "For s = \"au\", what is the output?",
+      "options": [
+        "1 — only one character fits",
+        "2 — 'au' has two unique characters",
+        "0 — the string is too short",
+        "An IndexError"
+      ],
+      "answer": 1,
+      "explanation": "i=0 'a': seen={'a':0},left=0,max=1. i=1 'u': not in seen. seen={'a':0,'u':1},left=0,window=[0,1]='au',len=2,max=2. Return 2. No duplicates, window grows to cover the full string."
+    },
+    {
+      "id": 20,
+      "question": "What does the seen map look like at the END of processing s = \"abcabcbb\"?",
+      "options": [
+        "{'a':0, 'b':1, 'c':2} — only first occurrences stored",
+        "{'a':3, 'b':7, 'c':5} — last seen indices for each character",
+        "{'a':3, 'b':6, 'c':5} — second-to-last for 'b'",
+        "Empty — the map is cleared after each window"
+      ],
+      "answer": 1,
+      "explanation": "The map is updated unconditionally at each step to the LATEST index. Final state of 'abcabcbb': 'a' last at index 3, 'b' last at index 7, 'c' last at index 5. seen = {'a':3,'b':7,'c':5}. The map is never cleared — it accumulates all characters seen, always reflecting the most recent occurrence."
+    },
+    {
+      "id": 21,
+      "question": "Could you use two pointers (left and right) with explicit pointer variables instead of enumerate?",
+      "options": [
+        "No — enumerate is required for hash map index tracking",
+        "Yes — 'for right in range(len(s)): char = s[right]' is equivalent to 'for right, char in enumerate(s)'. Both give you the index and character. enumerate is more Pythonic but both are correct.",
+        "Yes but only for ASCII strings",
+        "No — range() and enumerate() iterate at different speeds"
+      ],
+      "answer": 1,
+      "explanation": "enumerate(s) is syntactic sugar for iterating with an index. 'for i, char in enumerate(s)' is equivalent to 'for i in range(len(s)): char = s[i]'. In this problem, i is the right pointer. Both forms give identical behavior. enumerate is the idiomatic Python choice — it's cleaner and avoids the s[i] indexing."
+    },
+    {
+      "id": 22,
+      "question": "For s = \"pwwkew\", trace i=1 and i=2 to show the window behavior around the double 'w'.",
+      "options": [
+        "i=1 'w': seen={'p':0,'w':1},left=0,max=2. i=2 'w': seen['w']=1>=left=0 -> left=2. seen={'p':0,'w':2},window=[2,2]='w',len=1,max=2.",
+        "i=1 'w': left moves to 1. i=2 'w': left moves to 3.",
+        "i=1 'w': max becomes 3. i=2 'w': max becomes 4.",
+        "Both 'w' entries cause left to reset to 0."
+      ],
+      "answer": 0,
+      "explanation": "i=0 'p': seen={'p':0},left=0,max=1. i=1 'w': not in seen. seen={'p':0,'w':1},left=0,max=2. i=2 'w': seen['w']=1>=left=0 -> left=2. seen={'p':0,'w':2},window=[2,2],max=2. i=3 'k': seen+={'k':3},left=2,max=2. i=4 'e': seen+={'e':4},left=2,max=3. i=5 'w': seen['w']=2>=left=2 -> left=3. seen={'w':5},window=[3,5]='kew',len=3,max=3. Return 3."
+    },
+    {
+      "id": 23,
+      "question": "s = \"abcdef\" (all unique). What is max_len at each step, and does left ever move?",
+      "options": [
+        "left moves to 1 at i=1 due to the 'a' comparison",
+        "left stays at 0 throughout. max_len grows from 1 to 6 step by step. No character repeats so the if condition never triggers.",
+        "left stays at 0 and max_len jumps to 6 at the last step",
+        "left moves whenever max_len increases"
+      ],
+      "answer": 1,
+      "explanation": "All characters are unique. The condition 'char in seen' is False at every step. left stays 0. After each index i: max_len = i - 0 + 1 = i + 1. At i=5: max_len = 6. The algorithm degenerates to a simple length count for all-unique strings — the sliding window never needs to shrink."
+    },
+    {
+      "id": 24,
+      "question": "What is the key difference between this problem and 'Minimum Window Substring' (LC 76)?",
+      "options": [
+        "LC 76 uses BFS; this uses a sliding window",
+        "This problem maximizes window length under the constraint of no duplicate characters. LC 76 minimizes window length under the constraint of containing all characters of a target string t. Both use a sliding window (expand right, conditionally shrink left), but the direction (maximize vs minimize) and the constraint (no-duplicates vs must-contain-all) differ.",
+        "LC 76 only works on sorted strings",
+        "This problem uses a set; LC 76 requires a list"
+      ],
+      "answer": 1,
+      "explanation": "Both are sliding window problems using a two-pointer approach and a map. The differences: (1) objective — this maximizes length, LC 76 minimizes; (2) validity condition — this requires no duplicate characters, LC 76 requires all characters of t to be present; (3) shrink trigger — this shrinks when a duplicate is found, LC 76 shrinks when the window is valid (to try to find smaller valid windows)."
+    },
+    {
+      "id": 25,
+      "question": "A string has n characters all the same (e.g., 'aaaaaaa'). What is the time complexity for this specific case, and how many times does left actually move?",
+      "options": [
+        "O(n^2) — left moves at every step and the window resets fully each time",
+        "O(n) — i advances n steps total (one per character). left advances exactly n-1 steps total (moves from 0 to n-1 by the end). Total pointer movements = n + (n-1) = O(n). Each step does O(1) work.",
+        "O(1) — all duplicates are detected immediately",
+        "O(n log n) — repeated map lookups on the same key"
+      ],
+      "answer": 1,
+      "explanation": "For 'aaaaaaa': i=0: left=0. i=1: left jumps to 1. i=2: left jumps to 2. ... i=k: left jumps to k. Total left movements = n-1. Total i movements = n. Both are O(n). The key: left jumps directly to seen[char]+1 each time — not a while loop. Even in the all-duplicates worst case, the algorithm is strictly O(n), not O(n^2)."
+    }
+  ]
+}
