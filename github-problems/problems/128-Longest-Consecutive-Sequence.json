@@ -1,0 +1,394 @@
+{
+  "id": "128",
+  "title": "Longest Consecutive Sequence",
+  "difficulty": "Medium",
+  "tags": ["Array", "Hash Table", "Union Find"],
+  "description": "Given an unsorted array of integers nums, return the length of the longest consecutive elements sequence. You must write an algorithm that runs in O(n) time.",
+  "examples": [
+    {
+      "input": "nums = [100, 4, 200, 1, 3, 2]",
+      "output": "4",
+      "explanation": "The longest consecutive sequence is [1, 2, 3, 4]. Length = 4."
+    },
+    {
+      "input": "nums = [0, 3, 7, 2, 5, 8, 4, 6, 0, 1]",
+      "output": "9",
+      "explanation": "The longest consecutive sequence is [0,1,2,3,4,5,6,7,8]. Length = 9. Note the duplicate 0 — it does not extend the sequence."
+    },
+    {
+      "input": "nums = []",
+      "output": "0",
+      "explanation": "Empty array, no sequence."
+    },
+    {
+      "input": "nums = [1]",
+      "output": "1",
+      "explanation": "Single element, sequence of length 1."
+    }
+  ],
+  "constraints": [
+    "0 <= nums.length <= 10^5",
+    "−10^9 <= nums[i] <= 10^9",
+    "Must run in O(n) time"
+  ],
+  "intuition": "The brute force sorts the array and scans for consecutive runs — O(n log n). The O(n) requirement rules out sorting. The key insight is: only start counting a consecutive sequence from its true starting point — a number that has no left neighbor (num-1 is not in the set). If num-1 exists, then num is the middle of someone else's sequence, not a start. Skip it. For true starts only, keep incrementing and checking if next_num exists in the set, counting the run length. By only starting from genuine sequence heads, every number is visited at most twice — once in the outer loop and once in the inner while loop of the sequence it belongs to. That gives O(n) total. The set enables O(1) lookups, making the inner while loop checks free. Two decisions make this work: build a set for O(1) lookup, and skip any number that is not a sequence start.",
+  "why_not_sort": "Sorting gives O(n log n) which violates the O(n) constraint. More subtly, sorting would work but it wastes the information that a hash set gives you for free — O(1) membership testing. With a set, you can check 'is this a sequence start?' in O(1) without any ordering.",
+  "why_iterate_seen_not_nums": "Iterating over seen (the set) instead of nums (the list) avoids processing duplicates. If nums = [1,1,1,2,2], the set is {1,2}. Iterating nums would redundantly check num-1 for every duplicate — still correct but wasteful. Iterating the set processes each unique value exactly once.",
+  "the_key_guard": "'if num - 1 not in seen' is the optimizer that makes this O(n). Without it, every number triggers an inner while loop. With it, only sequence starts trigger the while loop. Since each number belongs to exactly one sequence, each number is processed in the while loop exactly once across all outer iterations.",
+  "why_set_not_dict": "A set suffices here because we only need membership testing (is num+1 present?), not frequency counts or index tracking. set has O(1) average lookup. Converting the list to a set also deduplicates, which is a bonus.",
+  "approach": {
+    "name": "Hash set + sequence start detection",
+    "steps": [
+      "Build a set from nums: seen = set(nums). This deduplicates and enables O(1) lookup.",
+      "Initialize max_sq = 0.",
+      "Iterate over each num in seen (not nums, to skip duplicates).",
+      "Check if num - 1 is NOT in seen. If so, num is the start of a sequence.",
+      "For sequence starts: set curr_sq = 1, next_num = num + 1.",
+      "While next_num is in seen: increment curr_sq, increment next_num.",
+      "Update max_sq = max(max_sq, curr_sq).",
+      "Return max_sq."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "from typing import List\n\nclass Solution:\n    # keep adding stuff in hashset\n    # if there's a previous that is not a starting point\n    # if there's no previous then it IS the starting point — simple!\n\n    def longestConsecutive(self, nums: List[int]) -> int:\n        seen = set(nums)  # build the entire set (no need to loop like in Java)\n        max_sq = 0\n\n        # optimizer: iterating over seen avoids processing duplicates\n        for num in seen:\n            if num - 1 not in seen:  # num is a sequence start — no left neighbor\n                curr_sq = 1\n                next_num = num + 1\n                while next_num in seen:\n                    curr_sq += 1\n                    next_num += 1\n                max_sq = max(max_sq, curr_sq)\n\n        return max_sq\n\n        # Time Complexity:  O(n) — each element enters the while loop at most once\n        # Space Complexity: O(n) — the set stores all unique elements"
+  },
+  "complexity": {
+    "time": "O(n) — building the set is O(n). The outer loop runs over unique values. The inner while loop runs for each value at most once across ALL outer iterations (each number belongs to exactly one sequence, so the total while loop iterations across all starts is at most n). Overall: O(n).",
+    "space": "O(n) — the set stores at most n unique elements."
+  },
+  "amortized_analysis": "The O(n) time claim is amortized. The outer for loop runs k times (k = number of unique values, k <= n). The inner while loop runs a variable number of steps. But crucially: every number is inside exactly one sequence, and the while loop only runs for that number when processing its sequence's start. So the TOTAL steps across all while loop executions is at most n. Outer loop: O(k). All while loops combined: O(n). Total: O(n).",
+  "python_gotchas": [
+    "In Java you build a HashSet by looping: for (int num : nums) set.add(num). In Python: set(nums) does this in one call — the constructor accepts any iterable.",
+    "Iterating 'for num in seen' instead of 'for num in nums' is important. If nums has duplicates, iterating nums processes the same value multiple times. The sequence-start check (num-1 not in seen) prevents WRONG answers but does redundant work. Iterating the set avoids all redundancy.",
+    "The while loop uses 'next_num in seen' — O(1) average for set lookup. If seen were a list, this would be O(n) per check and the whole algorithm would be O(n^2).",
+    "set(nums) where nums = [] returns an empty set without error. The for loop over an empty set does nothing. max_sq stays 0. Return 0. Edge case handled automatically.",
+    "Negative numbers work fine — num - 1 for num = -5 gives -6, which is a valid set lookup. No special handling needed.",
+    "Python's set iteration order is arbitrary (not insertion order, not sorted). The correctness of this algorithm does not depend on iteration order — we process every unique number and the max is taken regardless of order."
+  ],
+  "without_the_guard_analysis": {
+    "what_happens": "Without 'if num - 1 not in seen', every number triggers an inner while loop — even numbers in the middle of a sequence. For nums = [1,2,3,4], without the guard: num=1 runs while loop 4 steps, num=2 runs 3 steps, num=3 runs 2 steps, num=4 runs 1 step. Total: 10 steps for n=4. With the guard: only num=1 runs the while loop (4 steps). Total: 4 steps.",
+    "still_correct": "Removing the guard still gives the correct answer — the while loop for each start covers its full sequence, so max is still found correctly. But time complexity degrades to O(n^2) in the worst case.",
+    "worst_case": "nums = [1, 2, 3, ..., n]. Without guard: n + (n-1) + (n-2) + ... + 1 = O(n^2). With guard: only 1 triggers the while loop for n steps = O(n)."
+  },
+  "related_problems": [
+    {
+      "title": "Longest Consecutive Sequence II (variation)",
+      "relation": "Same idea but on a binary tree — find the longest path of consecutive integers. Apply DFS and track streak length."
+    },
+    {
+      "title": "Contains Duplicate (LC 217)",
+      "relation": "Also uses set(nums) for deduplication and O(1) membership testing. The pattern of converting a list to a set as the first step appears in many array problems."
+    },
+    {
+      "title": "Missing Number (LC 268)",
+      "relation": "Also leverages set membership to detect presence/absence of integers in a range. The 'what's missing from this numeric sequence' framing is related."
+    },
+    {
+      "title": "Longest Arithmetic Subsequence (LC 1027)",
+      "relation": "Harder generalization — find the longest subsequence with a constant difference d (not just d=1). Requires DP with a hash map per element."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "What is the key guard condition that makes this algorithm O(n) instead of O(n^2)?",
+      "options": [
+        "while next_num in seen — the inner loop terminates early",
+        "if num - 1 not in seen — only start counting from genuine sequence heads, ensuring each number is visited in the while loop exactly once across all outer iterations",
+        "seen = set(nums) — deduplication prevents redundant processing",
+        "max_sq = max(max_sq, curr_sq) — avoids comparing all pairs"
+      ],
+      "answer": 1,
+      "explanation": "Without the guard, every number triggers a while loop, leading to O(n^2) total steps for a fully consecutive array. The guard ensures only sequence starts (numbers with no left neighbor) trigger the while loop. Since every number belongs to exactly one sequence, the total while loop steps across all starts equals n. This amortized argument proves O(n)."
+    },
+    {
+      "id": 2,
+      "question": "Why do we iterate over 'seen' (the set) rather than 'nums' (the original list)?",
+      "options": [
+        "Sets are faster to iterate than lists in Python",
+        "Iterating nums processes duplicate values multiple times — each duplicate triggers the num-1 check redundantly. Iterating the set processes each unique value exactly once, avoiding wasted work.",
+        "Iterating nums would change its order",
+        "seen is always shorter than nums so iteration is faster"
+      ],
+      "answer": 1,
+      "explanation": "For nums = [1,1,1,2,2,3], seen = {1,2,3}. Iterating nums: 6 outer iterations. Iterating seen: 3 outer iterations. The guard still prevents wrong answers with nums, but iterating seen is strictly more efficient. For O(n) where n is the count of unique elements, iterating seen is cleaner and faster."
+    },
+    {
+      "id": 3,
+      "question": "What does 'num - 1 not in seen' check, and what does it mean when True?",
+      "options": [
+        "That num is the largest element in the array",
+        "That num has no left neighbor in the set — it is the start of a consecutive sequence. No smaller consecutive integer exists in the data, so counting rightward from num gives the full sequence length.",
+        "That num - 1 is negative",
+        "That the array contains no duplicates near num"
+      ],
+      "answer": 1,
+      "explanation": "If num - 1 IS in seen, then num is not the start — it is a continuation of the sequence starting at some smaller number. We would double-count work by starting there. If num - 1 is NOT in seen, num has no predecessor in the data — it is the genuine start. Only from starts do we count rightward."
+    },
+    {
+      "id": 4,
+      "question": "What is the time complexity and how is the O(n) claim proven?",
+      "options": [
+        "O(n log n) — the set operations have log n overhead",
+        "O(n^2) — the nested while loop makes it quadratic",
+        "O(n) — building the set is O(n). The outer loop visits k unique values. The inner while loop's total iterations across ALL outer iterations is at most n, because each number is processed in a while loop at most once (when its sequence start is processed). Total: O(n).",
+        "O(n * max_sequence_length) — depends on the data"
+      ],
+      "answer": 2,
+      "explanation": "The amortized argument: partition all n numbers into consecutive sequences. For each sequence of length L, the while loop runs L steps — once per number in that sequence. Summed across all sequences: total while steps = L1 + L2 + ... = n. The outer loop adds one check per unique value = O(k) <= O(n). Grand total: O(n)."
+    },
+    {
+      "id": 5,
+      "question": "Why is this problem not solvable in O(n) with sorting?",
+      "options": [
+        "Sorting cannot handle negative numbers",
+        "Sorting IS O(n log n) and the problem requires O(n). The O(n) constraint explicitly rules out comparison-based sorting. However, counting sort or radix sort could achieve O(n) if the value range were bounded — but the constraint allows nums[i] up to 10^9, making counting sort impractical.",
+        "Sorting removes duplicates which breaks the algorithm",
+        "Sorting changes the indices which the algorithm depends on"
+      ],
+      "answer": 1,
+      "explanation": "Comparison-based sorting is Omega(n log n) by the comparison lower bound. For this problem's constraint of -10^9 to 10^9, the value range is 2*10^9 — counting sort would need O(2*10^9) space, wildly impractical. The hash set approach achieves O(n) time and O(n) space without any ordering, which is why it's the canonical O(n) solution."
+    },
+    {
+      "id": 6,
+      "question": "For nums = [100, 4, 200, 1, 3, 2], trace which numbers trigger the while loop.",
+      "options": [
+        "All 6 numbers trigger the while loop",
+        "Only 100 and 200 trigger the while loop (they have no predecessors but form single-element sequences); 1 triggers and runs for 4 steps (1,2,3,4)",
+        "Only 1 triggers the while loop since 100 and 200 have no neighbor either",
+        "4 triggers and runs the longest while loop"
+      ],
+      "answer": 1,
+      "explanation": "seen = {1,2,3,4,100,200}. num=100: 99 not in seen -> start. while 101 in seen? No. curr_sq=1. num=4: 3 in seen -> skip. num=200: 199 not in seen -> start. while 201 in seen? No. curr_sq=1. num=1: 0 not in seen -> start. while 2 in seen: curr_sq=2. while 3: curr_sq=3. while 4: curr_sq=4. while 5? No. max_sq=4. num=2: 1 in seen -> skip. num=3: 2 in seen -> skip. Answer: 4."
+    },
+    {
+      "id": 7,
+      "question": "What happens with duplicate values in nums, e.g., nums = [1, 2, 2, 3]?",
+      "options": [
+        "The duplicates cause the while loop to count the sequence as longer than it is",
+        "seen = {1,2,3} deduplicates automatically. The sequence [1,2,3] has length 3. Duplicates in nums do not extend or affect sequence length since set membership is binary — present or absent.",
+        "An error is raised when duplicates are inserted into the set",
+        "The duplicate 2 causes the sequence to be counted twice"
+      ],
+      "answer": 1,
+      "explanation": "set(nums) silently ignores duplicates — inserting a duplicate just keeps the existing entry. The while loop checks 'next_num in seen' — this is a boolean check, not a count. Whether 2 appeared once or 100 times in nums, seen has exactly one entry for 2. Sequence length is correctly computed as 3."
+    },
+    {
+      "id": 8,
+      "question": "What is the space complexity and what uses the space?",
+      "options": [
+        "O(1) — we only use integer variables",
+        "O(log n) — the recursion depth of the implicit call stack",
+        "O(n) — the set 'seen' stores at most n unique elements from nums",
+        "O(n^2) — the set stores pairs of elements"
+      ],
+      "answer": 2,
+      "explanation": "seen = set(nums) stores every unique integer from nums. In the worst case (no duplicates), this is n elements. Each element takes O(1) space in the hash set. Total: O(n). The other variables (max_sq, curr_sq, next_num, num) are O(1). Return value is O(1). Dominant term: O(n) for the set."
+    },
+    {
+      "id": 9,
+      "question": "nums = [0, 3, 7, 2, 5, 8, 4, 6, 0, 1]. What is the answer and which number starts the longest sequence?",
+      "options": [
+        "Answer=8, starting from 1",
+        "Answer=9, starting from 0 — the sequence 0,1,2,3,4,5,6,7,8 has 9 elements",
+        "Answer=9, starting from 3",
+        "Answer=7, starting from 2"
+      ],
+      "answer": 1,
+      "explanation": "seen={0,1,2,3,4,5,6,7,8} (duplicate 0 removed). num=0: -1 not in seen -> start. while 1,2,3,4,5,6,7,8 in seen: curr_sq counts to 9. while 9: not in seen, stop. max_sq=9. Every other number (1-8) has its predecessor in seen and is skipped. Answer=9."
+    },
+    {
+      "id": 10,
+      "question": "What would the time complexity be WITHOUT the 'if num - 1 not in seen' guard?",
+      "options": [
+        "Still O(n) — the while loop's total steps cannot exceed n regardless",
+        "O(n log n) — each number is processed log n times",
+        "O(n^2) in the worst case — for a fully consecutive array [1,2,...,n], num=1 triggers n while steps, num=2 triggers n-1 steps, ..., sum = n(n+1)/2 = O(n^2)",
+        "O(n * k) where k is the longest sequence length"
+      ],
+      "answer": 2,
+      "explanation": "Without the guard, every number starts a while loop that runs until the sequence ends. For nums=[1,2,3,...,n]: num=1 runs n steps, num=2 runs n-1 steps, ..., num=n runs 1 step. Total = n+(n-1)+...+1 = n(n+1)/2 = O(n^2). The guard is the critical optimization that limits each number to appearing in at most one while loop execution."
+    },
+    {
+      "id": 11,
+      "question": "How does Python's set(nums) differ from manually building a HashSet in Java?",
+      "options": [
+        "Python's set is unordered and Java's HashSet is ordered",
+        "In Java you build a HashSet by looping over the array and calling set.add(num) for each element. In Python, set(nums) accepts any iterable directly — the constructor does the loop internally. One line vs a for loop, same O(n) result.",
+        "Python's set uses less memory than Java's HashSet",
+        "Python's set preserves insertion order; Java's HashSet does not"
+      ],
+      "answer": 1,
+      "explanation": "Java: Set<Integer> set = new HashSet<>(); for (int n : nums) set.add(n); — explicit loop. Python: seen = set(nums) — constructor handles it. Both are O(n). Python's set is backed by a hash table just like Java's HashSet. Neither preserves insertion order (for order preservation, Python has dict or list)."
+    },
+    {
+      "id": 12,
+      "question": "nums = []. What does the algorithm return?",
+      "options": [
+        "An IndexError — empty array has no elements to process",
+        "0 — seen = set() is empty, the for loop body never executes, max_sq stays 0",
+        "1 — the default sequence length",
+        "None — no maximum can be computed"
+      ],
+      "answer": 1,
+      "explanation": "set([]) = empty set. 'for num in seen' over an empty set: zero iterations. max_sq = 0 is never updated. Return 0. Python handles empty iterables gracefully — no error. This is also correct: an empty array has no consecutive sequence, so the answer is 0."
+    },
+    {
+      "id": 13,
+      "question": "Does the algorithm handle negative numbers correctly? For nums = [-3, -2, -1, 0, 1], what is the answer?",
+      "options": [
+        "No — set membership fails for negative numbers",
+        "Yes — answer is 5. seen={-3,-2,-1,0,1}. num=-3: -4 not in seen -> start. while -2,-1,0,1 in seen: curr_sq=5. max_sq=5.",
+        "Answer is 3 — only positive and zero values count",
+        "Answer is 2 — only the run of positives is considered"
+      ],
+      "answer": 1,
+      "explanation": "Negative integers are perfectly valid hash set entries. num-1 for num=-3 gives -4 — a valid integer, and a valid set lookup that returns False (not in seen). The while loop checks -2, -1, 0, 1 in sequence — all in seen. curr_sq reaches 5. The algorithm makes no assumption about number signs."
+    },
+    {
+      "id": 14,
+      "question": "Could you solve this problem with Union-Find (Disjoint Set Union)?",
+      "options": [
+        "No — Union-Find only works on graphs, not arrays",
+        "Yes — for each num in nums, union num with num+1 if num+1 exists in the set. Track component sizes. The largest component size is the answer. O(n * alpha(n)) time, nearly O(n). Less elegant than the hash set approach but valid.",
+        "Yes but only for arrays with no negative numbers",
+        "Yes — Union-Find gives O(log n) time, better than the hash set's O(n)"
+      ],
+      "answer": 1,
+      "explanation": "Union-Find approach: create a node per unique value. For each num, if num+1 exists union them. Find the component with the largest size. Time: O(n * alpha(n)) where alpha is the inverse Ackermann function — practically O(n). The hash set approach is simpler to code in an interview. Both are acceptable O(n) solutions."
+    },
+    {
+      "id": 15,
+      "question": "What is the role of 'next_num' in the while loop, and why use a separate variable instead of num?",
+      "options": [
+        "next_num is used to avoid modifying num which is needed for the guard check",
+        "next_num starts at num+1 and increments each iteration, tracking which element to look up next in the sequence. If you used num and incremented it, the outer for loop variable would be mutated — not a Python issue (Python for loops use iterators) but conceptually confusing and incorrect in other languages.",
+        "next_num is necessary because Python does not allow arithmetic on loop variables",
+        "next_num prevents the set from being modified during iteration"
+      ],
+      "answer": 1,
+      "explanation": "next_num = num + 1 starts one step ahead of the sequence start (the start itself is counted as curr_sq = 1). Each while iteration checks next_num, increments curr_sq, then increments next_num. This cleanly counts the streak length. Reusing num would require resetting it after the while loop for the outer for loop to function correctly — a source of bugs."
+    },
+    {
+      "id": 16,
+      "question": "nums = [1, 2, 3, 4, 5]. Only one number triggers the while loop. Which is it, and how many steps does the while loop run?",
+      "options": [
+        "num=3 triggers the while loop for 2 steps (3,4,5)",
+        "num=1 triggers the while loop for 4 steps (checking 2,3,4,5 — all in seen)",
+        "num=5 triggers the while loop for 5 steps",
+        "All 5 numbers trigger the while loop, each for decreasing steps"
+      ],
+      "answer": 1,
+      "explanation": "seen={1,2,3,4,5}. num=1: 0 not in seen -> start. while 2: curr_sq=2. while 3: 3. while 4: 4. while 5: 5. while 6: not in seen, stop. curr_sq=5. max_sq=5. num=2: 1 in seen -> skip. num=3: 2 in seen -> skip. num=4,5: skipped. Only num=1 triggers 4 while iterations (checking 2,3,4,5). Total while steps = 4. This demonstrates the O(n) amortized behavior."
+    },
+    {
+      "id": 17,
+      "question": "If nums contains all the same value, e.g., nums = [7, 7, 7, 7], what is the answer?",
+      "options": [
+        "4 — four copies means sequence length 4",
+        "1 — seen={7}, 6 not in seen so 7 is a start, while 8 in seen? No. curr_sq=1. Answer=1.",
+        "0 — duplicates are not counted",
+        "An error due to the set deduplication"
+      ],
+      "answer": 1,
+      "explanation": "seen = {7}. Only one unique element. num=7: 6 not in seen -> start. curr_sq=1, next_num=8. while 8 in seen? No. max_sq=1. Return 1. A single unique value forms a consecutive sequence of length 1. Duplicates contribute nothing to sequence length — the set deduplicates them away."
+    },
+    {
+      "id": 18,
+      "question": "The problem says the array is 'unsorted'. Why does the algorithm not need to sort?",
+      "options": [
+        "It implicitly sorts the array via the set",
+        "The algorithm never cares about positional order. The set gives O(1) lookup for any value regardless of where it appears in nums. For any sequence start, the while loop just increments and checks — the actual positions in the original array are irrelevant.",
+        "It uses the original positions via the index in the for loop",
+        "The constraint guarantees the array is nearly sorted"
+      ],
+      "answer": 1,
+      "explanation": "Position in the original array is completely irrelevant. What matters is: does value X exist in nums? The set answers this in O(1) without any ordering. Whether 4 appears before or after 2 in nums has no effect — the set just records presence. This is why sets (hash tables) unlock O(n) here where sorting would be O(n log n)."
+    },
+    {
+      "id": 19,
+      "question": "What is the difference between iterating 'for num in seen' versus 'for num in sorted(seen)'?",
+      "options": [
+        "sorted(seen) gives wrong answers because order matters for consecutive detection",
+        "Both give correct answers. sorted(seen) processes numbers in ascending order which makes the behavior easier to trace mentally, but adds O(n log n) time for the sort — violating the O(n) constraint. 'for num in seen' iterates in arbitrary order but is still correct and O(n).",
+        "for num in seen iterates in insertion order; sorted(seen) iterates by value",
+        "They are identical since Python sets maintain insertion order"
+      ],
+      "answer": 1,
+      "explanation": "Correctness does not depend on iteration order — we check every unique number, and the max is taken regardless of sequence. sorted(seen) would make the trace nicer but costs O(n log n) for the sort, defeating the purpose of the hash set approach. The O(n) solution must iterate seen in its native (arbitrary) order."
+    },
+    {
+      "id": 20,
+      "question": "For nums = [5, 4, 3], what is the longest sequence and which number is identified as the start?",
+      "options": [
+        "Start=5, sequence length=3 (5,4,3 counting down)",
+        "Start=3, sequence length=3 — the algorithm counts upward (3,4,5), and 3 is the start because 2 is not in seen",
+        "Start=4, since it is in the middle",
+        "No sequence found — the array is in descending order"
+      ],
+      "answer": 1,
+      "explanation": "seen={3,4,5}. The sequence is always counted upward (next_num = num+1). num=3: 2 not in seen -> start. while 4: curr_sq=2. while 5: curr_sq=3. while 6: not in seen. max_sq=3. num=4: 3 in seen -> skip. num=5: 4 in seen -> skip. Answer=3. The input order doesn't matter — 3 is always the start of the ascending sequence {3,4,5}."
+    },
+    {
+      "id": 21,
+      "question": "How does this solution compare to the sort-based O(n log n) solution in terms of implementation simplicity?",
+      "options": [
+        "The sort approach is more complex — it requires a hash map",
+        "The sort approach is simpler: sort, then scan linearly checking if nums[i]+1 == nums[i+1]. Handle duplicates by skipping equal adjacent elements. No set needed. The hash set approach avoids sorting at the cost of slightly more complex logic (the start-detection guard). Both are valid; the hash set approach satisfies the O(n) constraint.",
+        "Both approaches have the same code complexity",
+        "The sort approach requires Union-Find"
+      ],
+      "answer": 1,
+      "explanation": "Sort approach: sort array O(n log n), iterate once O(n), handle duplicates with skip. Very readable. Hash set approach: build set O(n), iterate with start-detection O(n). Slightly more conceptual overhead but O(n). For an interview without the O(n) constraint, the sort approach might be cleaner. With the constraint, hash set is the required approach."
+    },
+    {
+      "id": 22,
+      "question": "Could you use a hash MAP (dict) instead of a hash SET? What would change?",
+      "options": [
+        "No — a dict cannot support membership testing",
+        "Yes — a dict would work but adds unnecessary overhead. You would only use keys (for membership testing), making values redundant. A set is the appropriate data structure when you only need membership. Using a dict where a set suffices is a code smell.",
+        "Yes — and a dict would be faster due to better hash distribution",
+        "No — dicts are unordered and would break the consecutive detection"
+      ],
+      "answer": 1,
+      "explanation": "A dict with keys = nums values would support 'num in dict' checks identically to a set. But you would never use the dict values — wasteful. Sets are specifically designed for membership testing and are the semantically correct choice here. Functionally equivalent, but using a dict is over-engineering."
+    },
+    {
+      "id": 23,
+      "question": "nums = [1, 3, 5, 7]. What is the answer, and why?",
+      "options": [
+        "4 — all four numbers are 'consecutive' in the array",
+        "1 — no two numbers differ by exactly 1, so every number forms a sequence of length 1",
+        "2 — the gap between numbers is 2, so pairs are counted",
+        "0 — no consecutive sequence exists"
+      ],
+      "answer": 1,
+      "explanation": "seen={1,3,5,7}. num=1: 0 not in seen -> start. while 2 in seen? No. curr_sq=1. num=3: 2 not in seen -> start. while 4? No. curr_sq=1. num=5: 4 not in seen -> start. curr_sq=1. num=7: 6 not in seen -> start. curr_sq=1. max_sq=1. Every number is isolated — no consecutive neighbors. Each forms a sequence of length 1. Answer=1."
+    },
+    {
+      "id": 24,
+      "question": "What does Python's set iteration order guarantee?",
+      "options": [
+        "Elements are iterated in insertion order (like a list)",
+        "Elements are iterated in sorted ascending order",
+        "Iteration order is arbitrary and implementation-dependent — Python's set makes no ordering guarantee. Do not rely on any specific order when iterating a set.",
+        "Elements are iterated in the order they were first seen in the original list"
+      ],
+      "answer": 2,
+      "explanation": "Python's set is a hash table. Iteration order depends on hash values and internal bucket layout — effectively arbitrary from the programmer's perspective and can change between Python versions or runs. This is why 'for num in seen' processes numbers in an unpredictable order. The algorithm's correctness is order-independent: we check every number and take the max, so order doesn't matter."
+    },
+    {
+      "id": 25,
+      "question": "You are given nums = [2, 20, 4, 10, 3, 4, 5]. What is the answer and trace which numbers start sequences?",
+      "options": [
+        "Answer=4, starts: 2 (sequence 2,3,4,5), 10 (sequence 10), 20 (sequence 20)",
+        "Answer=3, only sequence is 2,3,4",
+        "Answer=5, starting from 10",
+        "Answer=4, starts: 10 (sequence 10,20,...) and 2"
+      ],
+      "answer": 0,
+      "explanation": "seen={2,3,4,5,10,20}. num=2: 1 not in seen -> start. while 3: sq=2. while 4: sq=3. while 5: sq=4. while 6: stop. max_sq=4. num=3: 2 in seen -> skip. num=4: 3 in seen -> skip (even though 4 appeared twice in nums, seen only has it once). num=5: 4 in seen -> skip. num=10: 9 not in seen -> start. while 11: stop. sq=1. num=20: 19 not in seen -> start. while 21: stop. sq=1. max_sq stays 4. Answer=4."
+    }
+  ]
+}
