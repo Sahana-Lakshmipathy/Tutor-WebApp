@@ -24,7 +24,7 @@
     "mat[i][j] is either 0 or 1",
     "There is at least one 0 in mat"
   ],
-  "intuition": "**The naive approach** — for each `1`, run a BFS to find its nearest `0` — is O((m·n)²), which is too slow.\n\n**The key insight**: flip the question. Instead of asking *"how far is the nearest 0 from this 1?"*, ask *"how far does each 0 reach?"*\n\nStart a **multi-source BFS simultaneously from every `0`**. Each 0 begins at distance 0 and expands outward wave by wave. The first time a `1`-cell is reached by the BFS, that distance is guaranteed to be the minimum — because BFS explores in order of increasing distance.\n\nThis is the same trick used in **rotting oranges** and **walls and gates**: when you have multiple sources and want minimum distance to any source, seed all sources at once instead of running separate BFS per cell.",
+  "intuition": "**The naive approach** — for each `1`, run a BFS to find its nearest `0` — is O((m·n)²), which is too slow.\n\n**The key insight**: flip the question. Instead of asking \"how far is the nearest 0 from this 1?\", ask \"how far does each 0 reach?\"\n\nStart a **multi-source BFS simultaneously from every `0`**. Each 0 begins at distance 0 and expands outward wave by wave. The first time a `1`-cell is reached by the BFS, that distance is guaranteed to be the minimum — because BFS explores in order of increasing distance.\n\nThis is the same trick used in **rotting oranges** and **walls and gates**: when you have multiple sources and want minimum distance to any source, seed all sources at once instead of running separate BFS per cell.",
   "approach": {
     "name": "Multi-source BFS",
     "steps": [

@@ -1,9 +1,9 @@
 // Set these to point at YOUR GitHub repo where problems/ JSONs live
 export const GITHUB = {
-  owner: 'YOUR_GITHUB_USERNAME',
-  repo: 'YOUR_REPO_NAME',
+  owner: 'Sahana-Lakshmipathy',
+  repo: 'Tutor-WebApp',
   branch: 'main',
-  problemsPath: 'problems',
+  problemsPath: 'github-problems/problems',
   // Optional: add a personal access token if you hit rate limits (60 req/hr unauthenticated)
   // token: import.meta.env.VITE_GITHUB_TOKEN,
 };
