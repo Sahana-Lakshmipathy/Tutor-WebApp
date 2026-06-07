@@ -1,0 +1,409 @@
+{
+  "id": "238",
+  "title": "Product of Array Except Self",
+  "difficulty": "Medium",
+  "tags": ["Array", "Prefix Product", "Two Passes"],
+  "description": "Given an integer array nums, return an array answer such that answer[i] is equal to the product of all elements of nums except nums[i]. You must write an algorithm that runs in O(n) time and without using the division operation. The output array does not count as extra space for space complexity purposes.",
+  "examples": [
+    {
+      "input": "nums = [1, 2, 3, 4]",
+      "output": "[24, 12, 8, 6]",
+      "explanation": "answer[0] = 2*3*4=24, answer[1] = 1*3*4=12, answer[2] = 1*2*4=8, answer[3] = 1*2*3=6."
+    },
+    {
+      "input": "nums = [-1, 1, 0, -3, 3]",
+      "output": "[0, 0, 9, 0, 0]",
+      "explanation": "Any position not at the zero gets 0 in the product. The zero position gets the product of all others: (-1)*1*(-3)*3 = 9."
+    }
+  ],
+  "constraints": [
+    "2 <= nums.length <= 10^5",
+    "−30 <= nums[i] <= 30",
+    "The product of any prefix or suffix of nums is guaranteed to fit in a 32-bit integer",
+    "Must run in O(n) time",
+    "Cannot use division",
+    "Output array does not count as extra space"
+  ],
+  "intuition": "The product of everything except nums[i] is the product of everything to the LEFT of i multiplied by the product of everything to the RIGHT of i. If you build a left-product array and a right-product array, the answer at each position is left[i] * right[i]. That is O(n) time but O(n) extra space. The optimization: reuse the result array itself. Forward pass: store left products directly into result. At index i, result[i] = product of all elements before i. Backward pass: accumulate right products with a running variable and multiply into result in place. At index i, result[i] *= (product of all elements after i). After both passes, result[i] = left_product[i] * right_product[i] = product of everything except nums[i]. No division, no extra array, O(n) time, O(1) extra space.",
+  "why_no_division": "The obvious approach is: compute total product, then divide by nums[i] for each position. This fails for two reasons: (1) the problem explicitly forbids division, and (2) it breaks entirely when any nums[i] == 0 — you cannot divide by zero. The two-pass approach handles zeros naturally.",
+  "core_insight": {
+    "definition": "answer[i] = (product of nums[0..i-1]) * (product of nums[i+1..n-1])",
+    "forward_pass": "After forward pass: result[i] = product of nums[0..i-1]. At i=0 there is nothing to the left, so result[0] = 1.",
+    "backward_pass": "Running variable 'num' accumulates the right product. At each i (going right to left), result[i] *= num, then num *= nums[i].",
+    "combined": "After both passes: result[i] = left_product[i] * right_product[i] = product of all elements except nums[i]."
+  },
+  "pass_trace": {
+    "input": "[1, 2, 3, 4]",
+    "initial_result": "[1, 1, 1, 1]",
+    "forward_pass_steps": [
+      "i=0: result[0] *= 1 (num=1) -> result[0]=1. Then num *= nums[0]=1 -> num=1.",
+      "i=1: result[1] *= 1 (num=1) -> result[1]=1. Then num *= nums[1]=2 -> num=2.",
+      "i=2: result[2] *= 2 (num=2) -> result[2]=2. Then num *= nums[2]=3 -> num=6.",
+      "i=3: result[3] *= 6 (num=6) -> result[3]=6. Then num *= nums[3]=4 -> num=24."
+    ],
+    "after_forward": "[1, 1, 2, 6]",
+    "backward_pass_steps": [
+      "num reset to 1.",
+      "i=3: result[3] *= 1 (num=1) -> result[3]=6. Then num *= nums[3]=4 -> num=4.",
+      "i=2: result[2] *= 4 (num=4) -> result[2]=8. Then num *= nums[2]=3 -> num=12.",
+      "i=1: result[1] *= 12 (num=12) -> result[1]=12. Then num *= nums[1]=2 -> num=24.",
+      "i=0: result[0] *= 24 (num=24) -> result[0]=24. Then num *= nums[0]=1 -> num=24."
+    ],
+    "after_backward": "[24, 12, 8, 6]"
+  },
+  "approach": {
+    "name": "Two-pass prefix/suffix product in-place",
+    "steps": [
+      "Initialize result = [1] * len(nums).",
+      "Forward pass: maintain running variable num = 1. For i from 0 to n-1: result[i] *= num, then num *= nums[i]. After this pass, result[i] holds the product of all elements to the LEFT of i.",
+      "Reset num = 1.",
+      "Backward pass: For i from n-1 down to 0: result[i] *= num, then num *= nums[i]. After this pass, result[i] is multiplied by the product of all elements to the RIGHT of i.",
+      "Return result."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "from typing import List\n\nclass Solution:\n    def productExceptSelf(self, nums: List[int]) -> List[int]:\n        result = [1 for i in range(len(nums))]\n\n        num = 1\n\n        # forward pass: result[i] = product of all elements to the LEFT of i\n        for i in range(len(nums)):\n            result[i] *= num\n            num *= nums[i]\n        # after forward pass: result = [1, 1, 2, 6] for [1,2,3,4]\n\n        num = 1\n\n        # backward pass: result[i] *= product of all elements to the RIGHT of i\n        # PY: go from last to first including zero and in reverse\n        for i in range(len(nums)-1, -1, -1):\n            result[i] *= num\n            num *= nums[i]\n        # after backward pass: result = [24, 12, 8, 6] for [1,2,3,4]\n\n        return result\n\n        # Time Complexity:  O(n) — two linear passes\n        # Space Complexity: O(1) extra — result array is the output, not counted as extra"
+  },
+  "complexity": {
+    "time": "O(n) — one forward pass O(n) and one backward pass O(n). Total O(n).",
+    "space": "O(1) extra space — the result array is the required output and per the problem statement does not count. The only extra variable is the running product 'num' which is O(1)."
+  },
+  "step_order_critical": "Within each pass, the order of the two operations matters: result[i] *= num BEFORE num *= nums[i]. If you reverse them: num *= nums[i] first, then result[i] *= num — you include nums[i] itself in the product at position i, which is wrong. Always: apply the current running product to result first, THEN absorb nums[i] into num for future positions.",
+  "python_gotchas": [
+    "range(len(nums)-1, -1, -1) means: start at len(nums)-1 (last index), stop before -1 (exclusive, so stops at 0), step -1 (go backwards). The -1 stop is exclusive — index 0 IS included. A common mistake is range(len(nums)-1, 0, -1) which stops before 0 and misses index 0.",
+    "result = [1 for i in range(len(nums))] is equivalent to [1] * len(nums). The list comprehension is slightly more verbose but both create a list of n ones. [1] * n is more Pythonic.",
+    "The running variable is reset to 1 between passes (num = 1). Forgetting this reset means the backward pass starts with num = total_product instead of 1, causing all values to be multiplied by total_product squared.",
+    "print() statements should be removed before submission — they do not affect correctness but add noise.",
+    "result[i] *= num is shorthand for result[i] = result[i] * num. Since result starts as all 1s, result[i] * num == num on the forward pass. The *= becomes meaningful on the backward pass when result[i] already holds the left product."
+  ],
+  "naive_approach": {
+    "description": "Division-based: compute total product, then result[i] = total / nums[i].",
+    "why_fails": "Explicitly forbidden by the problem. Also breaks when any element is 0 — cannot divide by zero. If there are two zeros, every position is 0. If there is exactly one zero, only that zero's position has a nonzero result. Handling these edge cases makes the division approach as complex as the two-pass approach.",
+    "complexity": "O(n) time, O(1) extra space — but forbidden."
+  },
+  "alternate_naive": {
+    "description": "Brute force: for each i, compute the product of all j != i with a nested loop.",
+    "complexity": "O(n^2) time, O(1) extra space. Correct but too slow for n=10^5."
+  },
+  "zero_handling": {
+    "description": "The two-pass approach handles zeros automatically without special casing.",
+    "example": "nums = [1, 0, 3]. Forward pass: result=[1,1,0]. Backward pass: num accumulates 3, then 0, then 1. result becomes [0, 3, 1]. answer[0]=1*0*3... wait: answer[0]=0*3=0, answer[1]=1*3=3, answer[2]=1*0=0. Correct: product except nums[0]=0*3=0, except nums[1]=1*3=3, except nums[2]=1*0=0."
+  },
+  "related_problems": [
+    {
+      "title": "Trapping Rain Water (LC 42)",
+      "relation": "Same two-pass pattern: forward pass computes left max for each position, backward pass computes right max. Then combine. Structurally identical to this problem's left-product and right-product passes."
+    },
+    {
+      "title": "Maximum Product Subarray (LC 152)",
+      "relation": "Also involves prefix products and tracking running products. Uses similar forward/backward sweep reasoning for handling negatives."
+    },
+    {
+      "title": "Sum of Distances in Tree (LC 834)",
+      "relation": "Two DFS passes on a tree: first pass computes subtree sizes (analogous to left products), second pass propagates answers upward (analogous to right products). The two-pass left-right decomposition generalizes beyond arrays."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "What does result[i] hold after the forward pass, before the backward pass?",
+      "options": [
+        "The product of all elements in nums",
+        "The product of all elements to the LEFT of index i (nums[0] * nums[1] * ... * nums[i-1]). For i=0 this is 1 (empty product).",
+        "The product of all elements to the RIGHT of index i",
+        "nums[i] multiplied by the running total"
+      ],
+      "answer": 1,
+      "explanation": "The forward pass runs left to right. At each index i, result[i] is assigned the current running product BEFORE nums[i] is absorbed. So result[i] = product of nums[0..i-1]. At i=0, the running product is 1 (initialized, nothing absorbed yet), so result[0] = 1 — correct since there is nothing to the left of index 0."
+    },
+    {
+      "id": 2,
+      "question": "What does the backward pass add to result[i]?",
+      "options": [
+        "It overwrites result[i] with the product of all elements to the right",
+        "It multiplies result[i] by the product of all elements to the RIGHT of index i (nums[i+1] * ... * nums[n-1]). Since result[i] already holds the left product, the combined value is left * right = product of everything except nums[i].",
+        "It adds the total sum of all elements",
+        "It subtracts nums[i] from the running total"
+      ],
+      "answer": 1,
+      "explanation": "The backward pass runs right to left. The running variable num accumulates the right product. At index i, result[i] *= num (current right product) BEFORE nums[i] is absorbed. After both passes: result[i] = left_product[i] * right_product[i] = product of all elements except nums[i]."
+    },
+    {
+      "id": 3,
+      "question": "Why is the result array initialized to all 1s?",
+      "options": [
+        "1 is the additive identity and prevents division errors",
+        "1 is the multiplicative identity. Starting at 1 allows *= operations to correctly build up products from scratch. result[i] *= left_product correctly becomes left_product (since 1 * x = x). If initialized to 0, all multiplications would stay 0.",
+        "The problem guarantees at least one element is 1",
+        "It handles the zero edge case automatically"
+      ],
+      "answer": 1,
+      "explanation": "1 is the multiplicative identity — multiplying by 1 leaves the value unchanged. Initializing to 1 means result[i] *= num is equivalent to result[i] = num on the forward pass (since 1 * num = num). On the backward pass, result[i] *= right_product correctly multiplies the left product (already stored) by the right product. Any other initialization value would corrupt the computation."
+    },
+    {
+      "id": 4,
+      "question": "What is the correct Python range for iterating backwards from index n-1 to index 0 inclusive?",
+      "options": [
+        "range(len(nums)-1, 0, -1) — starts at last index, stops before 0",
+        "range(len(nums), -1, -1) — starts one past the end",
+        "range(len(nums)-1, -1, -1) — starts at last index, stops before -1 (so includes 0), step -1",
+        "range(len(nums)-1, 1, -1) — stops before 1"
+      ],
+      "answer": 2,
+      "explanation": "range(start, stop, step) excludes the stop value. To include index 0: stop must be -1 (since -1 is excluded, 0 is included). range(len(nums)-1, -1, -1) correctly generates len(nums)-1, len(nums)-2, ..., 1, 0. range(len(nums)-1, 0, -1) would stop before 0 — missing index 0 — a classic off-by-one error."
+    },
+    {
+      "id": 5,
+      "question": "Why must result[i] *= num happen BEFORE num *= nums[i] in each pass?",
+      "options": [
+        "Order doesn't matter — both orderings give the same result",
+        "If num *= nums[i] runs first, num includes nums[i] itself when it multiplies result[i]. This means result[i] would include nums[i] in its product — exactly what we are trying to exclude. Apply first, absorb second.",
+        "Python evaluates right-to-left, so the order is reversed internally",
+        "The first operation initializes num; the second uses it"
+      ],
+      "answer": 1,
+      "explanation": "The invariant: result[i] should contain the product of all elements EXCEPT nums[i]. If you absorb nums[i] into num before applying it to result[i], then result[i] gets a product that includes nums[i] itself. Apply (result[i] *= num using current running product, which excludes nums[i]) THEN absorb (num *= nums[i] for future positions). Wrong order corrupts the result at every position."
+    },
+    {
+      "id": 6,
+      "question": "What happens if you forget to reset num = 1 between the forward and backward passes?",
+      "options": [
+        "Nothing — num is overwritten immediately in the backward loop",
+        "The backward pass starts with num = total_product_of_nums (the value left from the forward pass) instead of 1. Every result[i] gets multiplied by total_product during the backward pass, inflating every value by a factor of total_product. The output is wrong.",
+        "The backward pass runs in the wrong direction",
+        "Python raises a NameError because num is undefined"
+      ],
+      "answer": 1,
+      "explanation": "After the forward pass, num = nums[0]*nums[1]*...*nums[n-1] (the total product). If not reset, the backward pass starts multiplying result[i] by this large accumulated value. result[0] for example would become left_product[0] * total_product * right_product[0] instead of just left_product[0] * right_product[0]. Every element would be wrong."
+    },
+    {
+      "id": 7,
+      "question": "For nums = [1, 2, 3, 4], what is result after the forward pass?",
+      "options": [
+        "[24, 12, 8, 6]",
+        "[1, 1, 2, 6]",
+        "[1, 2, 6, 24]",
+        "[4, 3, 2, 1]"
+      ],
+      "answer": 1,
+      "explanation": "num=1. i=0: result[0]*=1 -> result[0]=1, num*=nums[0]=1 -> num=1. i=1: result[1]*=1 -> 1, num*=2 -> num=2. i=2: result[2]*=2 -> 2, num*=3 -> num=6. i=3: result[3]*=6 -> 6, num*=4 -> num=24. After forward: [1,1,2,6]. Each result[i] = product of elements before i."
+    },
+    {
+      "id": 8,
+      "question": "For nums = [1, 2, 3, 4], continuing from result = [1, 1, 2, 6], what is result after the backward pass?",
+      "options": [
+        "[1, 1, 2, 6] — unchanged",
+        "[24, 12, 8, 6]",
+        "[6, 2, 1, 1]",
+        "[24, 6, 2, 1]"
+      ],
+      "answer": 1,
+      "explanation": "num=1. i=3: result[3]*=1 -> 6*1=6, num*=4 -> num=4. i=2: result[2]*=4 -> 2*4=8, num*=3 -> num=12. i=1: result[1]*=12 -> 1*12=12, num*=2 -> num=24. i=0: result[0]*=24 -> 1*24=24, num*=1 -> num=24. Final: [24,12,8,6]. Correct."
+    },
+    {
+      "id": 9,
+      "question": "What is the space complexity, and why does the output array not count?",
+      "options": [
+        "O(n) — the result array takes O(n) space regardless",
+        "O(1) extra space — the problem statement explicitly says the output array does not count toward space complexity. The only non-output variable is 'num' which is O(1). If you allocated a separate left[] and right[] array, that would be O(n) extra.",
+        "O(log n) — the two passes use recursive call stack",
+        "O(n^2) — the nested products require O(n) per element"
+      ],
+      "answer": 1,
+      "explanation": "By convention and per the problem's explicit statement, the output array is not counted in auxiliary space. The algorithm uses exactly one extra scalar variable (num). No separate prefix/suffix arrays are created. Extra space = O(1). This is the key optimization over the naive three-array approach (left[], right[], result[]) which uses O(n) extra space."
+    },
+    {
+      "id": 10,
+      "question": "Why does the problem explicitly forbid division?",
+      "options": [
+        "Division is too slow — O(log n) per operation",
+        "To prevent the trivial solution (total product / nums[i]) and to avoid the division-by-zero problem when nums[i] == 0. The two-pass approach handles zeros naturally without special casing.",
+        "Division produces floating-point numbers which are imprecise",
+        "Division would change the time complexity to O(n^2)"
+      ],
+      "answer": 1,
+      "explanation": "The division approach total_product / nums[i] fails when nums[i] = 0. If one zero exists, only that position's answer is nonzero — but dividing by 0 is undefined. If two zeros exist, every answer is 0. These edge cases require separate handling that adds complexity. Forbidding division forces the cleaner two-pass approach that handles zeros automatically."
+    },
+    {
+      "id": 11,
+      "question": "nums = [1, 0, 3, 4]. What is the output?",
+      "options": [
+        "[0, 12, 0, 0]",
+        "[0, 12, 0, 0]",
+        "[0, 12, 0, 0] — wait, let me compute. answer[0]=0*3*4=0, answer[1]=1*3*4=12, answer[2]=1*0*4=0, answer[3]=1*0*3=0",
+        "All of the above — they are the same"
+      ],
+      "answer": 0,
+      "explanation": "answer[0] = product of [0,3,4] = 0. answer[1] = product of [1,3,4] = 12. answer[2] = product of [1,0,4] = 0. answer[3] = product of [1,0,3] = 0. Output: [0,12,0,0]. The two-pass approach: Forward: result=[1,1,0,0]. Backward: num=1; i=3: result[3]*=1=0,num=4; i=2: result[2]*=4=0,num=12; i=1: result[1]*=12=12,num=0; i=0: result[0]*=0=0,num=0. Correct."
+    },
+    {
+      "id": 12,
+      "question": "nums = [0, 0]. What is the output?",
+      "options": [
+        "[1, 1] — two zeros cancel out",
+        "[0, 0] — product of all except nums[0] is just nums[1]=0, and vice versa",
+        "[0, 1]",
+        "An error — two zeros cause division by zero"
+      ],
+      "answer": 1,
+      "explanation": "answer[0] = product of all except nums[0] = nums[1] = 0. answer[1] = product of all except nums[1] = nums[0] = 0. Output: [0,0]. Forward pass: result=[1,0]. Backward pass: num=1; i=1: result[1]*=1=0, num*=0=0; i=0: result[0]*=0=0, num=0. Result: [0,0]. Correct. No division-by-zero issues."
+    },
+    {
+      "id": 13,
+      "question": "This problem shares a structural pattern with Trapping Rain Water (LC 42). What is that pattern?",
+      "options": [
+        "Both use sorting as a preprocessing step",
+        "Both use a two-pass left-right decomposition: forward pass computes a left-side quantity for each index, backward pass computes a right-side quantity. Then combine. For this problem: left products and right products. For Trapping Rain Water: left max heights and right max heights.",
+        "Both use a stack to track previous elements",
+        "Both use binary search on the array"
+      ],
+      "answer": 1,
+      "explanation": "Trapping Rain Water: forward pass fills left_max[i] = max height to the left of i. Backward pass fills right_max[i] = max height to the right. Water at i = min(left_max[i], right_max[i]) - height[i]. Product Except Self: forward pass fills left_product[i]. Backward pass fills right_product[i]. Answer[i] = left_product[i] * right_product[i]. Same two-pass structure, different operations (max vs product, min vs multiply)."
+    },
+    {
+      "id": 14,
+      "question": "What is the naive O(n^2) approach to this problem?",
+      "options": [
+        "Sort the array, then use binary search for each element",
+        "For each index i, multiply all elements except nums[i] using a nested loop. Outer loop iterates i from 0 to n-1. Inner loop iterates j from 0 to n-1, skipping j==i. O(n^2) time, O(1) extra space (besides output). Correct but too slow for n=10^5.",
+        "Recursively compute the product using divide and conquer",
+        "Use a suffix tree to compute all subarray products"
+      ],
+      "answer": 1,
+      "explanation": "Brute force: for each i, compute product of nums[j] for all j != i. Two nested loops. O(n^2) time. Correct but fails the time constraint for large n. The two-pass approach achieves O(n) by reusing previously computed partial products instead of recomputing from scratch for each position."
+    },
+    {
+      "id": 15,
+      "question": "For nums = [2, 3, 4, 5], what is result[2] after the forward pass?",
+      "options": [
+        "6 — product of nums[0] * nums[1] = 2 * 3",
+        "24 — product of nums[0] * nums[1] * nums[2] = 2 * 3 * 4",
+        "4 — just nums[2] itself",
+        "60 — total product divided by nums[2]"
+      ],
+      "answer": 0,
+      "explanation": "Forward pass builds left products. result[2] = product of all elements BEFORE index 2 = nums[0] * nums[1] = 2 * 3 = 6. The forward pass does NOT include nums[2] itself — it applies num (current running product) to result[i] BEFORE absorbing nums[i]. After i=0: num=2. After i=1: num=6. At i=2: result[2] *= 6 -> result[2] = 6."
+    },
+    {
+      "id": 16,
+      "question": "Can this algorithm be done in a single pass instead of two passes?",
+      "options": [
+        "Yes — you can interleave left and right product computation in one loop",
+        "No — you fundamentally need to know the right product for each position, which requires either a second pass or a separate right-product array. A single pass would need to process each position twice (once for left, once for right), which is equivalent to two passes.",
+        "Yes — using a stack to track both directions simultaneously",
+        "Yes — if the array is sorted first"
+      ],
+      "answer": 1,
+      "explanation": "To compute result[i] = left_product[i] * right_product[i], you need right_product[i] which depends on elements to the RIGHT of i. In a single left-to-right pass, you haven't seen those elements yet. You could build a right_product array first (one right-to-left pass) and then apply left products (one left-to-right pass) — still two passes. The two-pass approach is the minimum necessary for O(1) extra space."
+    },
+    {
+      "id": 17,
+      "question": "nums = [-1, 1, 0, -3, 3]. What is the output?",
+      "options": [
+        "[0, 0, 9, 0, 0]",
+        "[0, 0, -9, 0, 0]",
+        "[9, 9, 9, 9, 9]",
+        "[0, 0, 0, 0, 0]"
+      ],
+      "answer": 0,
+      "explanation": "answer[2] = (-1)*1*(-3)*3 = 9. All other positions include the 0 at index 2, so their product is 0. Output: [0,0,9,0,0]. Forward: result=[1,-1,-1,0,0]. Backward: num=1; i=4: *=1=0,num=3; i=3: *=3=0,num=-9; i=2: *=-9=-9... wait result[2] after forward is -1. -1 * -9 = 9. Correct. i=1: result[1] after forward = -1, backward num = 0 (absorbed 0 at index 2), result[1]*=0=0. Correct."
+    },
+    {
+      "id": 18,
+      "question": "Why is [1] * len(nums) preferred over [1 for i in range(len(nums))] in Python?",
+      "options": [
+        "[1] * n is a list multiplication — more concise and faster in CPython since it's a single C-level operation. The list comprehension is equivalent but creates the list element by element in Python bytecode.",
+        "They are identical in every way",
+        "[1] * n only works for integers; the comprehension works for any type",
+        "The comprehension is faster because it avoids the multiplication operator"
+      ],
+      "answer": 0,
+      "explanation": "Both produce a list of n ones and are functionally equivalent. [1] * n is idiomatic Python, more concise, and typically faster because CPython implements list repetition in C directly. The comprehension [1 for i in range(n)] iterates in Python bytecode. For creating repeated values, the multiplication syntax is the standard Pythonic choice."
+    },
+    {
+      "id": 19,
+      "question": "What would result look like after the forward pass for nums = [5]?",
+      "options": [
+        "[5] — the single element",
+        "[1] — result[0] = product of everything to the left of index 0 = empty product = 1",
+        "[0]",
+        "An IndexError — single element array is not valid"
+      ],
+      "answer": 1,
+      "explanation": "nums=[5], n=1. result=[1]. Forward pass: i=0, result[0]*=1 (num=1) -> result[0]=1. num*=nums[0]=5 -> num=5. After forward: result=[1]. Backward pass: num=1. i=0: result[0]*=1 -> result[0]=1. num*=nums[0]=5. Return [1]. Correct: product of everything except nums[0] in a 1-element array is the empty product = 1. (Though constraints say n >= 2.)"
+    },
+    {
+      "id": 20,
+      "question": "What is the three-array O(n) space approach, and how does this solution improve on it?",
+      "options": [
+        "The three-array approach uses sorting; this uses hashing",
+        "Three-array: build left[i] = product of nums[0..i-1], build right[i] = product of nums[i+1..n-1], then result[i] = left[i] * right[i]. Uses O(n) extra space for left[] and right[]. This solution eliminates left[] and right[] by computing them on-the-fly using a running variable and storing results directly into the output array. Extra space drops from O(n) to O(1).",
+        "The three-array approach works for unsorted arrays; this requires sorted input",
+        "This solution uses three arrays internally — the improvement is in time, not space"
+      ],
+      "answer": 1,
+      "explanation": "Classic textbook approach allocates left[n] and right[n] arrays explicitly, then combines. That is O(n) extra space. The optimization: left products go directly into result[] (which we have to return anyway, so it's free). Right products are accumulated in a single scalar variable and applied in-place during the backward pass. Net extra space: one integer variable = O(1)."
+    },
+    {
+      "id": 21,
+      "question": "For nums = [3, 2, 1], what is the running value of 'num' at the START of each iteration in the backward pass?",
+      "options": [
+        "num starts at 24 (the total product from the forward pass)",
+        "num starts at 1 (reset), then becomes 1 after i=2, 1 after i=1... let me think. After reset: num=1. i=2: apply 1 to result[2], then num*=nums[2]=1 -> num=1. i=1: apply 1 to result[1], then num*=nums[1]=2 -> num=2. i=0: apply 2 to result[0], then num*=nums[0]=3 -> num=6.",
+        "num starts at 6 (total product of [3,2,1])",
+        "num mirrors the forward pass values in reverse"
+      ],
+      "answer": 1,
+      "explanation": "num resets to 1 before the backward pass. At start of i=2: num=1. At start of i=1: num=1 (absorbed 1 from nums[2]=1). At start of i=0: num=2 (absorbed 2 from nums[1]=2). The backward pass num at the start of iteration i = product of nums[i+1..n-1]. For i=0: 2*1=2. For i=1: just 1. For i=2: empty product=1."
+    },
+    {
+      "id": 22,
+      "question": "Is this solution correct when nums contains both negative and positive numbers?",
+      "options": [
+        "No — the running product can go negative which breaks multiplication",
+        "Yes — the algorithm multiplies values regardless of sign. Negative products are valid. The two-pass approach is agnostic to sign — it just multiplies. Example: nums=[-1,2,-3] gives result=[2*-3, -1*-3, -1*2] = [-6, 3, -2].",
+        "No — range() does not support negative step with negative values",
+        "Yes but only if an even number of negatives exist"
+      ],
+      "answer": 1,
+      "explanation": "Sign is irrelevant to the algorithm. The two-pass approach just multiplies — positive times negative, negative times negative, any combination works. The result is mathematically correct: result[i] = product of all nums[j] for j != i, which naturally includes the correct sign based on how many negatives are excluded."
+    },
+    {
+      "id": 23,
+      "question": "What is the conceptual name for what result[i] stores after the forward pass?",
+      "options": [
+        "Suffix product at index i",
+        "Total product",
+        "Prefix product at index i — the product of all elements that come before (are prefixed to) index i. More precisely, the exclusive left prefix product.",
+        "Running average at index i"
+      ],
+      "answer": 2,
+      "explanation": "Prefix product at index i = product of nums[0..i-1] = product of all elements before i. 'Exclusive' because it excludes nums[i] itself. The forward pass builds exclusive left prefix products. The backward pass accumulates exclusive right suffix products and multiplies them in. The final result is (exclusive left prefix) * (exclusive right suffix) = product of everything except nums[i]."
+    },
+    {
+      "id": 24,
+      "question": "nums = [2, 2, 2, 2]. What is the output?",
+      "options": [
+        "[16, 16, 16, 16] — total product is 16 for each position",
+        "[8, 8, 8, 8] — product of three 2s is 8 for each position",
+        "[4, 4, 4, 4] — wrong count",
+        "[2, 2, 2, 2] — unchanged"
+      ],
+      "answer": 1,
+      "explanation": "For each position, product of all except self = 2*2*2 = 8. All positions have the same value since all elements are equal. Forward pass: result=[1,2,4,8]. Backward pass: num=1; i=3: result[3]*=1=8,num=2; i=2: result[2]*=2=8,num=4; i=1: result[1]*=4=8,num=8; i=0: result[0]*=8=8. Final: [8,8,8,8]. Correct."
+    },
+    {
+      "id": 25,
+      "question": "In a coding interview, if the interviewer asks 'can you do it in O(1) extra space?', what is the key insight you state?",
+      "options": [
+        "Use binary search to reduce space requirements",
+        "The output array itself can serve as the left-product array during the forward pass, eliminating the need for a separate left[] array. A single scalar variable accumulates the right product during the backward pass, eliminating the need for a separate right[] array. Output array is free per the problem statement. Net extra space: one variable = O(1).",
+        "Sort the array first to reduce memory usage",
+        "Use bit manipulation to compress the products"
+      ],
+      "answer": 1,
+      "explanation": "This is the core interview insight. The naive three-array solution is O(n) space. To reduce: (1) We must return result[] anyway — fill it with left products during the forward pass at no extra cost. (2) Right products don't need storage — compute them on the fly right-to-left with one scalar variable and multiply into result[] in place. These two observations together reduce extra space to O(1)."
+    }
+  ]
+}
