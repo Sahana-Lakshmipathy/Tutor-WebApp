@@ -1,0 +1,406 @@
+{
+  "id": "1249",
+  "title": "Minimum Remove to Make Valid Parentheses",
+  "difficulty": "Medium",
+  "tags": ["Stack", "String", "Two Pointers"],
+  "description": "Given a string s of '(', ')' and lowercase English letters, remove the minimum number of parentheses (in any positions) so that the resulting string is valid. Return any valid string. A string is valid if it is empty, contains only lowercase letters, or can be written as AB (A concatenated with B) where A and B are valid, or as (A) where A is valid.",
+  "examples": [
+    {
+      "input": "s = \"lee(t(c)o)de)\"",
+      "output": "\"lee(t(c)o)de\"",
+      "explanation": "Remove the last ')' — it has no matching '('."
+    },
+    {
+      "input": "s = \"a)b(c)d\"",
+      "output": "\"ab(c)d\"",
+      "explanation": "Remove the first ')' — it appears before any '('."
+    },
+    {
+      "input": "s = \"))((\"",
+      "output": "\"\"",
+      "explanation": "All four characters are invalid and must be removed."
+    },
+    {
+      "input": "s = \"(a(b(c)d)\"",
+      "output": "\"a(b(c)d)\" or \"(a(b(c)d)\" — any valid removal of the unmatched '(' is acceptable",
+      "explanation": "One unmatched '(' exists. Any valid output that removes exactly one is accepted."
+    }
+  ],
+  "constraints": [
+    "1 <= s.length <= 10^5",
+    "s[i] is either '(', ')' or a lowercase English letter"
+  ],
+  "intuition": "Letters are a complete distraction — ignore them entirely. The only characters that can make a string invalid are unmatched parentheses. A ')' is unmatched if there is no preceding '(' waiting to pair with it. A '(' is unmatched if no future ')' ever closes it. The trick is identifying exactly which indices are invalid. A stack is perfect for this: walk left to right and use the stack to track parentheses that have not yet been matched. When you see '(' push it. When you see ')' and the top of the stack is '(' — they match, pop. When you see ')' and the stack is empty or the top is also ')' — this ')' is unmatched, push it. After one full pass, whatever remains in the stack consists entirely of unmatched parentheses. Collect their indices, then rebuild the string skipping those positions. The key insight is storing indices in the stack rather than just characters — at the end you need to know which positions to delete, not just that some unmatched characters exist.",
+  "why_stack": "A stack naturally models the nesting structure of parentheses. It remembers open parentheses in the order they were seen, so when a ')' arrives it can check if there is a waiting '(' to pair with. If there is, they cancel. If not, the ')' itself is the problem. After the pass, unmatched '(' and ')' both sit in the stack waiting.",
+  "why_store_indices": "Storing just the character ('(' or ')') in the stack is not enough. At the end you need to know WHERE in the string the invalid characters are so you can skip them during reconstruction. Storing [char, index] pairs gives you both.",
+  "two_cases_for_unmatched": {
+    "unmatched_close": "A ')' arrives and the stack is empty or the top is ')'. No '(' is waiting. This ')' will never be matched. Push it.",
+    "unmatched_open": "A '(' arrives but no future ')' ever closes it. It stays in the stack until the end. Stack cleanup collects it."
+  },
+  "approach": {
+    "name": "Stack tracking unmatched indices + set for O(1) lookup",
+    "steps": [
+      "Initialize a deque as the stack.",
+      "Iterate through s with index i and character char.",
+      "If char is not '(' or ')', skip it (letters are irrelevant).",
+      "If char is ')' AND the stack is non-empty AND stack[-1][0] == '(': pop the stack — matched pair, cancel both.",
+      "Otherwise (char is '(' OR char is ')' with no matching '('): push [char, i] to track the unmatched character.",
+      "After the loop, drain the stack into a set of invalid indices.",
+      "Rebuild the result string by iterating s and including only characters whose index is NOT in the set.",
+      "Return the result."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "from collections import deque\n\nclass Solution:\n    # Intuition:\n    # letters are a distraction — only care about parentheses\n    # use a stack to track unmatched parentheses with their indices\n    # if we see ) and stack top is ( -> they match, pop it\n    # if we see ) and stack is empty or top is ) -> unmatched, push it\n    # whatever remains in stack at the end = invalid indices to remove\n\n    def minRemoveToMakeValid(self, s: str) -> str:\n        # stack stores [char, index] for unmatched parentheses\n        stack = deque()\n\n        for i, char in enumerate(s):\n            if char != '(' and char != ')':  # PY: can also use char.isalpha()\n                continue\n            # PY: checking last element in Python is using [-1]\n            elif char == ')' and stack and stack[-1][0] == '(':\n                stack.pop()  # matched pair, cancel out\n            else:\n                stack.append([char, i])  # unmatched, track for removal\n\n        # collect all invalid indices\n        indices_to_remove = set()  # set for O(1) lookup\n        while stack:\n            c, pos = stack.pop()\n            indices_to_remove.add(pos)\n\n        # rebuild string skipping invalid indices\n        res = ''\n        for i, char in enumerate(s):\n            if i not in indices_to_remove:\n                res += char\n\n        return res\n\n        # Time Complexity: O(n)\n        # Space Complexity: O(n)"
+  },
+  "complexity": {
+    "time": "O(n) — one pass to build the stack, one pass to drain it into the set, one pass to rebuild the string. All three are O(n).",
+    "space": "O(n) — the stack holds at most n elements in the worst case (e.g., '(((((' pushes all n). The set and result string are also O(n)."
+  },
+  "python_gotchas": [
+    "char.isalpha() is a clean alternative to 'char != \"(\" and char != \")\"' for skipping non-parenthesis characters. Both are correct.",
+    "Checking stack[-1] in Python on an empty deque raises an IndexError. The guard 'stack and ...' short-circuits: if stack is falsy (empty), the second condition is never evaluated. Always guard non-empty before accessing stack[-1].",
+    "deque.pop() removes from the RIGHT (last element) — same as stack behavior. deque.popleft() removes from the LEFT. Using popleft() here would give wrong behavior since we want LIFO.",
+    "String concatenation res += char inside a loop is O(n^2) in the worst case in some languages, but in Python CPython's optimizer often handles this efficiently. For guaranteed O(n), use a list and ''.join() at the end: result_chars = []; result_chars.append(char); return ''.join(result_chars).",
+    "The stack stores [char, index] as a list. You can also store just the index and look up the character via s[index] when needed. Storing both is explicit and readable.",
+    "When draining the stack into the set, you can also do: indices_to_remove = {pos for _, pos in stack} as a set comprehension — cleaner than the while loop."
+  ],
+  "string_rebuild_optimization": {
+    "current": "res = ''; for i, char in enumerate(s): res += char (if valid)",
+    "preferred": "result = [char for i, char in enumerate(s) if i not in indices_to_remove]; return ''.join(result)",
+    "why": "List append is O(1) amortized; ''.join() is O(n). The list comprehension version is idiomatic Python and avoids any potential quadratic string concatenation."
+  },
+  "alternative_approaches": [
+    {
+      "name": "Two-pass counter (no stack, no indices)",
+      "description": "Pass 1 left to right: track open_count. When you see '(', increment. When you see ')' and open_count > 0, decrement (matched). When you see ')' and open_count == 0, mark for removal. Pass 2 right to left: track close_count for remaining unmatched '('. Simpler space-wise but trickier to implement cleanly without storing positions.",
+      "complexity": "O(n) time, O(n) space for the output string. The counter itself is O(1) but you still need to build the output."
+    },
+    {
+      "name": "Stack storing only indices",
+      "description": "Instead of [char, index], push only the index. At the match check, use s[stack[-1]] == '(' to determine if the top is an open paren. Saves a tiny amount of space per stack entry. Functionally identical.",
+      "complexity": "O(n) time and space — same as the main solution."
+    }
+  ],
+  "related_problems": [
+    {
+      "title": "Valid Parentheses (LC 20)",
+      "relation": "The matching logic here is identical to Valid Parentheses — push opens, pop on matching close, invalid if close arrives with no open. The difference: LC 20 just returns true/false. This problem must reconstruct a valid string."
+    },
+    {
+      "title": "Longest Valid Parentheses (LC 32)",
+      "relation": "Also uses a stack storing indices of unmatched parentheses. The stack-of-indices pattern is the same; LC 32 finds the longest contiguous valid substring rather than removing the minimum characters."
+    },
+    {
+      "title": "Remove Invalid Parentheses (LC 301)",
+      "relation": "Harder variant — must return ALL possible minimum removal results, not just one. Uses BFS or DFS instead of a simple stack pass. LC 1249 (this problem) only requires any one valid answer."
+    },
+    {
+      "title": "Check if a Parentheses String Can Be Valid (LC 2116)",
+      "relation": "Also analyzes unmatched parentheses but with a locked/unlocked constraint. Same parenthesis tracking intuition."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "Why are letters (non-parenthesis characters) completely ignored during the stack processing pass?",
+      "options": [
+        "Letters are converted to parentheses before processing",
+        "Letters can never cause a parentheses string to be invalid — only unmatched '(' or ')' do. Letters are always kept in the output regardless of position.",
+        "Letters are handled in a separate second pass",
+        "Letters reset the stack state when encountered"
+      ],
+      "answer": 1,
+      "explanation": "The validity of a parentheses string depends entirely on whether every '(' has a matching ')' and vice versa. Letters contribute to neither side of that equation. No matter where a letter appears, it is always valid and always included in the output. Skipping them in the stack pass is correct and efficient."
+    },
+    {
+      "id": 2,
+      "question": "What does the stack contain at the end of the first pass, and why?",
+      "options": [
+        "All characters in the string, in order",
+        "Only the '(' characters that were never matched",
+        "All unmatched parentheses — both unmatched '(' (no future ')') and unmatched ')' (no preceding '(') — along with their indices",
+        "Only the ')' characters that had no matching '('"
+      ],
+      "answer": 2,
+      "explanation": "Every time a '(' and ')' match, they cancel via a pop — neither ends up in the final stack. Only parentheses that never find a partner remain. Unmatched ')' are pushed immediately when encountered (no open to pair with). Unmatched '(' are pushed and stay because no ')' ever pops them. Both types survive to the end."
+    },
+    {
+      "id": 3,
+      "question": "Why do we store [char, index] in the stack rather than just the character?",
+      "options": [
+        "Storing the character is needed to distinguish '(' from ')' during the matching check",
+        "At the end we need to know the POSITIONS of invalid characters to skip them during string reconstruction. The character alone tells us nothing about where in the string to delete.",
+        "Indices allow us to sort the stack at the end for faster lookup",
+        "Storing both allows us to use a deque instead of a list"
+      ],
+      "answer": 1,
+      "explanation": "If we only stored characters, we would know that some unmatched parentheses exist but not where. During reconstruction, we iterate the original string and need to know: should I include s[i]? That requires knowing which indices are invalid. Storing [char, index] gives us the positions directly."
+    },
+    {
+      "id": 4,
+      "question": "What is the three-condition check 'char == \")\" and stack and stack[-1][0] == \"(\"' doing?",
+      "options": [
+        "Checking if the current character is a closing paren, the stack is non-empty, and the top of the stack is an open paren — all three must be true for a match",
+        "Checking if the stack is empty before any push operation",
+        "Validating that the entire string so far is balanced",
+        "Ensuring we never push ')' onto the stack"
+      ],
+      "answer": 0,
+      "explanation": "All three conditions must hold for a match: (1) current char is ')' — only ')' can close an open paren; (2) stack is non-empty — can't match against nothing; (3) stack top is '(' — a ')' on top means the previous unmatched char was also a close, so they cannot pair. Only when all three are true do we have a genuine matched pair and pop."
+    },
+    {
+      "id": 5,
+      "question": "What happens if you check stack[-1] without first checking that the stack is non-empty?",
+      "options": [
+        "It returns None, which is handled gracefully",
+        "An IndexError is raised on an empty deque. The 'stack and ...' guard short-circuits: if stack is empty (falsy), the second condition is never evaluated, preventing the error.",
+        "Python automatically returns the first element when the stack is empty",
+        "It accesses the last element appended in a previous function call"
+      ],
+      "answer": 1,
+      "explanation": "Accessing stack[-1] on an empty deque raises IndexError: pop from an empty deque. Python's short-circuit evaluation of 'and' saves us: 'stack and stack[-1][0] == \"(\"' — if stack is empty, it is falsy, and Python does not evaluate the right side at all. This guard pattern is essential whenever you access a potentially empty container."
+    },
+    {
+      "id": 6,
+      "question": "Why do we use a set for indices_to_remove rather than a list?",
+      "options": [
+        "Sets are ordered, which is required for the reconstruction loop",
+        "Sets deduplicate entries automatically, which prevents double-removing an index",
+        "The 'i not in indices_to_remove' check is O(1) for a set versus O(n) for a list. For a string of length n, the reconstruction loop does n lookups — O(1) each with a set gives O(n) total versus O(n^2) with a list.",
+        "Sets use less memory than lists for the same elements"
+      ],
+      "answer": 2,
+      "explanation": "The reconstruction loop does one membership test per character: 'i not in indices_to_remove'. For a set, each test is O(1) average. For a list, it is O(k) where k is the list size. With up to n indices in the set and n characters to check, a list would make reconstruction O(n^2). The set keeps it O(n)."
+    },
+    {
+      "id": 7,
+      "question": "What is the time complexity and how is it broken down?",
+      "options": [
+        "O(n log n) — due to set operations having log n lookup",
+        "O(n^2) — the stack can hold n elements and we iterate it",
+        "O(n) — pass 1 (build stack) is O(n), pass 2 (drain to set) is O(n), pass 3 (rebuild string) is O(n). All three are O(n), total O(n).",
+        "O(n) for the stack pass but O(n^2) overall due to string concatenation"
+      ],
+      "answer": 2,
+      "explanation": "Three passes, each O(n): (1) iterate s once to build the stack — O(n); (2) drain the stack into a set — O(k) where k <= n, so O(n); (3) iterate s again to build the result — O(n) with O(1) set lookups. String concatenation in CPython is often optimized but using ''.join() makes the O(n) guarantee explicit. Total: O(n)."
+    },
+    {
+      "id": 8,
+      "question": "For input s = \"))((\", what does the stack contain after the full pass?",
+      "options": [
+        "Empty — all characters cancel each other out",
+        "[ [')', 0], [')', 1], ['(', 2], ['(', 3] ] — all four are unmatched",
+        "[ ['(', 2], ['(', 3] ] — only the open parens are unmatched",
+        "[ [')', 0], [')', 1] ] — only the close parens are unmatched"
+      ],
+      "answer": 1,
+      "explanation": "i=0, char=')': stack is empty, push [')' ,0]. i=1, char=')': stack top is ')' not '(', push [')',1]. i=2, char='(': not ')', push ['(',2]. i=3, char='(': not ')', push ['(',3]. No character ever triggers a pop. Stack = [[')',0],[')',1],['(',2],['(',3]]. All four are invalid — output is empty string."
+    },
+    {
+      "id": 9,
+      "question": "For input s = \"()\", what does the stack contain after the full pass?",
+      "options": [
+        "[ ['(', 0], [')', 1] ] — both characters are pushed",
+        "Empty — '(' is pushed at i=0, then ')' at i=1 matches and pops it",
+        "[ ['(', 0] ] — only the open paren remains",
+        "[ [')', 1] ] — only the close paren remains"
+      ],
+      "answer": 1,
+      "explanation": "i=0, char='(': not ')', push ['(',0]. Stack = [['(',0]]. i=1, char=')': char == ')' and stack non-empty and stack[-1][0] == '(' -> pop. Stack = []. End of string. Stack is empty, indices_to_remove is empty. Output is '()' unchanged. Correct — it was already valid."
+    },
+    {
+      "id": 10,
+      "question": "What is the space complexity and what contributes to it?",
+      "options": [
+        "O(1) — we only use a fixed number of pointers",
+        "O(log n) — only the recursion stack of the sort",
+        "O(n) — the stack holds at most n elements (e.g., all '(' input), the set holds at most n indices, and the result string is at most n characters",
+        "O(n^2) — the stack stores pairs of [char, index]"
+      ],
+      "answer": 2,
+      "explanation": "Worst case for the stack: input is '(((((' — all n characters are pushed, none popped. Stack size = n. The indices_to_remove set holds at most n elements. The result string is at most n characters. All three are O(n), so total auxiliary space is O(n)."
+    },
+    {
+      "id": 11,
+      "question": "Why is deque used instead of a plain list for the stack?",
+      "options": [
+        "deque is required for pop() to work correctly on the right side",
+        "deque.pop() and deque.append() are both O(1) guaranteed. list.pop() from the end is also O(1), so in this problem a plain list would work equally well. deque is a stylistic or habitual choice here — it is not necessary for correctness or performance.",
+        "deque allows negative indexing; list does not",
+        "deque prevents duplicate entries automatically"
+      ],
+      "answer": 1,
+      "explanation": "For stack behavior (push/pop from the same end), a Python list with append() and pop() is O(1) and works perfectly. deque is more relevant when you need O(1) operations on BOTH ends (like BFS with popleft). Using deque here is not wrong — both are O(1) for right-end operations — but a plain list would be equally correct and more common for stack usage."
+    },
+    {
+      "id": 12,
+      "question": "What is the alternative clean Python way to build indices_to_remove without the while loop?",
+      "options": [
+        "indices_to_remove = list(stack)",
+        "indices_to_remove = {pos for _, pos in stack}  — a set comprehension that unpacks each [char, index] pair",
+        "indices_to_remove = set(stack)",
+        "indices_to_remove = dict(stack)"
+      ],
+      "answer": 1,
+      "explanation": "Each element in stack is [char, index]. A set comprehension {pos for _, pos in stack} unpacks each pair: _ is the character (ignored with _ convention), pos is the index. This is idiomatic Python, cleaner than the while loop, and produces the same O(k) set in one line."
+    },
+    {
+      "id": 13,
+      "question": "Why does ''.join() outperform string concatenation res += char in a loop?",
+      "options": [
+        "join() uses C-level memory allocation, reserving the full string size upfront for a single O(n) copy. Repeated += may create new string objects each time in some implementations, leading to O(n^2) total copies.",
+        "join() is faster because it skips whitespace characters",
+        "'+=' on strings raises a warning in Python 3.9+",
+        "join() batches writes to disk more efficiently"
+      ],
+      "answer": 0,
+      "explanation": "In CPython, ''.join(list) pre-calculates the total length and does one allocation and one copy — O(n). String += in a loop can in theory create a new string object each iteration (strings are immutable), leading to O(1+2+...+n) = O(n^2) copies. CPython has an optimization for += in some cases, but it is implementation-specific. ''.join() is the idiomatic, guaranteed-O(n) approach."
+    },
+    {
+      "id": 14,
+      "question": "For input s = \"a(b(c)d\", trace the stack after processing each parenthesis only.",
+      "options": [
+        "After '(' at i=1: [['(',1]]. After '(' at i=3: [['(',1],['(',3]]. After ')' at i=5: pop, stack=[['(',1]]. End: stack=[['(',1]], remove index 1.",
+        "After '(' at i=1: [['(',1]]. After '(' at i=3: [['(',1],['(',3]]. After ')' at i=5: pop, stack=[['(',1]]. After ')' at i=7: pop, stack=[]. End: stack empty, no removals.",
+        "All characters including letters are pushed to the stack",
+        "Stack ends with [['(',3]] — the inner open paren is unmatched"
+      ],
+      "answer": 0,
+      "explanation": "s = 'a(b(c)d'. Letters skipped. i=1 '(': push ['(',1]. i=3 '(': push ['(',3]. i=5 ')': top is '(' -> pop ['(',3]. Stack=[['(',1]]. No more parens. End: stack=[['(',1]], remove index 1. Output: 'ab(c)d'. The outer '(' at index 1 was unmatched."
+    },
+    {
+      "id": 15,
+      "question": "The problem says return ANY valid result. Why does this allow flexibility in which characters we remove?",
+      "options": [
+        "Any order of removal is valid as long as the count is minimal",
+        "When multiple unmatched parentheses exist and multiple valid minimum removals are possible (e.g., '((' — remove either one), the problem accepts any correct answer. The stack approach happens to remove specific ones but any valid minimum removal is fine.",
+        "The flexibility means we can remove extra characters for safety",
+        "It means we can return the empty string as a valid answer always"
+      ],
+      "answer": 1,
+      "explanation": "For a string like '((' (two unmatched opens), any one of them can be removed to produce a valid string with one paren. The problem guarantees any valid minimum removal is accepted. The stack approach deterministically removes the leftmost unmatched characters that remain, but the judge accepts any equivalent-length valid output. This 'any valid answer' design is common in problems where the solution is not unique."
+    },
+    {
+      "id": 16,
+      "question": "What would happen if you pushed ')' onto the stack WITHOUT checking if the top is '('?",
+      "options": [
+        "Nothing — the ')' would be popped later when a '(' is found to its right",
+        "Every ')' would be pushed, and no matching would ever occur. The stack would accumulate all parentheses. The reconstruction would incorrectly remove every parenthesis from the output.",
+        "An IndexError would occur during the push",
+        "Only the last ')' would be pushed due to deque's size limit"
+      ],
+      "answer": 1,
+      "explanation": "The matching logic is: ')' cancels with a preceding '('. If you push all ')' without the check, you never pop anything — every '(' and ')' piles up. After the pass, all parentheses are in the stack and all get added to indices_to_remove. The output would be a string with no parentheses at all — incorrect unless all parens were genuinely unmatched."
+    },
+    {
+      "id": 17,
+      "question": "How does this problem differ from Valid Parentheses (LC 20)?",
+      "options": [
+        "Valid Parentheses allows letters; this problem does not",
+        "Valid Parentheses checks if a string is already valid (returns boolean). This problem must produce a valid string by removing the minimum characters (returns modified string). The matching intuition is identical; the output requirement is completely different.",
+        "Valid Parentheses uses BFS; this problem uses a stack",
+        "This problem handles multiple bracket types '(', '[', '{'; Valid Parentheses handles only '('"
+      ],
+      "answer": 1,
+      "explanation": "The stack-based matching is the same in both: push '(', pop on matching ')'. The difference is what you do with the result. LC 20 returns True if the stack is empty at the end (no unmatched chars). LC 1249 uses the stack's remaining contents to identify positions to delete, then reconstructs the string. Same core algorithm, different post-processing."
+    },
+    {
+      "id": 18,
+      "question": "Input s = \"(a)\". What is the output?",
+      "options": [
+        "\"a\" — parentheses are always removed",
+        "\"(a)\" — the string is already valid, nothing is removed",
+        "\"(\" — only the open paren is kept",
+        "\")\" — only the close paren is kept"
+      ],
+      "answer": 1,
+      "explanation": "i=0 '(': push ['(',0]. i=1 'a': skip. i=2 ')': top is '(' -> pop. Stack empty. indices_to_remove is empty. Output is '(a)' unchanged. Already valid."
+    },
+    {
+      "id": 19,
+      "question": "Input s = \"(()\". What is the output?",
+      "options": [
+        "\"()\" — the first unmatched '(' is removed",
+        "\"(()\" unchanged",
+        "\"\" — all parens are removed",
+        "\"((\" — the ')' is removed"
+      ],
+      "answer": 0,
+      "explanation": "i=0 '(': push ['(',0]. i=1 '(': push ['(',1]. i=2 ')': top is '(' -> pop ['(',1]. Stack=[['(',0]]. End: indices_to_remove={0}. Rebuild: skip i=0 '(', keep i=1 '(', keep i=2 ')'. Output: '()'. The first open paren at index 0 was unmatched."
+    },
+    {
+      "id": 20,
+      "question": "What does char.isalpha() check, and is it a perfect replacement for 'char != \"(\" and char != \")\"' here?",
+      "options": [
+        "isalpha() checks if char is a letter (a-z, A-Z, and Unicode letters). It is a perfect replacement here because the constraints guarantee s contains only lowercase letters and parentheses — so non-alpha means it must be a parenthesis.",
+        "isalpha() checks if char is alphanumeric (letters and digits); not safe if digits could appear",
+        "isalpha() is slower than direct character comparison",
+        "isalpha() returns True for parentheses in some Unicode locales"
+      ],
+      "answer": 0,
+      "explanation": "The constraints state s[i] is either '(', ')' or a lowercase letter. So 'not isalpha()' is equivalent to 'char == \"(\" or char == \")\"' for this specific input. isalpha() is slightly more readable. If the input could contain digits or other symbols, the explicit parenthesis check would be safer — but under these constraints both are correct."
+    },
+    {
+      "id": 21,
+      "question": "Could you solve this problem without a stack, using only counters? What is the limitation?",
+      "options": [
+        "No — counters cannot track parenthesis order",
+        "Yes — a two-pass counter approach works: pass 1 left-to-right marks unmatched ')' (open_count tracks available '('), pass 2 right-to-left marks unmatched '(' (close_count tracks available ')'). But this approach is harder to implement cleanly and less intuitive than the stack.",
+        "Yes — a single counter pass suffices if you count net balance at each position",
+        "No — counters have O(n^2) time complexity for this problem"
+      ],
+      "answer": 1,
+      "explanation": "A counter-based two-pass approach: Pass 1 left-to-right, track open_count. For each '(', increment. For each ')', if open_count > 0 decrement (matched), else mark ')' for removal. Pass 2 right-to-left, track close_count. For each ')' not already marked, increment. For each '(', if close_count > 0 decrement (matched), else mark '(' for removal. Same O(n) complexity but harder to reason about. The stack makes the intent explicit."
+    },
+    {
+      "id": 22,
+      "question": "Why do both unmatched '(' and unmatched ')' end up in the same stack?",
+      "options": [
+        "They are handled by separate branches that both push to the same deque for convenience",
+        "The else branch covers both: '(' is always pushed (no condition could pop it — only ')' pops, not '('). Unmatched ')' is also pushed by the else branch when the matching condition fails. One stack, one else, catches both.",
+        "The stack is post-processed to separate the two types",
+        "Only ')' ends up in the stack; '(' is handled separately"
+      ],
+      "answer": 1,
+      "explanation": "The else branch fires in two cases: (1) char is '(' — always pushed since '(' never triggers a pop. (2) char is ')' but matching fails (stack empty or top is not '('). Both push to the same stack. This elegance is why the code is so compact: one deque, one else clause, handles all unmatched characters regardless of type."
+    },
+    {
+      "id": 23,
+      "question": "Input s = \"lee(t(c)o)de)\". Identify the index of the character to be removed.",
+      "options": [
+        "Index 0 — 'l' is removed",
+        "Index 12 — the final ')' at the end is unmatched",
+        "Index 4 — the inner '(' is unmatched",
+        "Index 8 — the inner ')' is unmatched"
+      ],
+      "answer": 1,
+      "explanation": "s = 'lee(t(c)o)de)'. Parentheses at indices: 3='(', 5='(', 7=')', 9=')', 12=')'. i=3 '(': push ['(',3]. i=5 '(': push ['(',5]. i=7 ')': pop ['(',5]. Stack=[['(',3]]. i=9 ')': pop ['(',3]. Stack=[]. i=12 ')': stack empty, push [')',12]. End: indices_to_remove={12}. Remove the last character. Output: 'lee(t(c)o)de'."
+    },
+    {
+      "id": 24,
+      "question": "What is the maximum number of characters that could be removed in the worst case, and what input triggers it?",
+      "options": [
+        "Always exactly 1 — the problem asks for minimum removal",
+        "At most n/2 — you can only have n/2 unmatched parens",
+        "Up to n — a string like ')))(((  ' or ')))))' has all characters unmatched and all must be removed",
+        "At most 2 — one unmatched '(' and one unmatched ')'"
+      ],
+      "answer": 2,
+      "explanation": "Consider s = '))))' (n=4 close parens). Every ')' is unmatched (no preceding '('). All n characters go into indices_to_remove. Output is the empty string. Similarly '((((' is all unmatched opens. Up to n characters can be removed. The problem says minimum removal — in the worst case, minimum still means all of them."
+    },
+    {
+      "id": 25,
+      "question": "If the input string has no parentheses at all (e.g., s = \"abc\"), what does the algorithm return?",
+      "options": [
+        "An empty string — no parentheses means nothing is valid",
+        "\"abc\" — all characters are letters, the stack processes nothing (all skipped), indices_to_remove is empty, output equals the original input",
+        "A single '()' appended to the string",
+        "An error — the algorithm requires at least one parenthesis"
+      ],
+      "answer": 1,
+      "explanation": "Every character in 'abc' hits the 'continue' branch (not '(' or ')'). The stack stays empty. indices_to_remove is empty. The reconstruction loop includes every character. Output is 'abc' — unchanged. Correct: a string with only letters is already a valid parentheses string (vacuously — no parens to be unmatched)."
+    }
+  ]
+}
