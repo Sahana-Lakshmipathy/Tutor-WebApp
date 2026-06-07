@@ -1,0 +1,400 @@
+{
+  "id": "15",
+  "title": "3Sum",
+  "difficulty": "Medium",
+  "tags": ["Two Pointers", "Array", "Sorting"],
+  "description": "Given an integer array nums, return all the triplets [nums[i], nums[j], nums[k]] such that i != j, i != k, j != k, and nums[i] + nums[j] + nums[k] == 0. The solution set must not contain duplicate triplets.",
+  "examples": [
+    {
+      "input": "nums = [-1,0,1,2,-1,-4]",
+      "output": "[[-1,-1,2],[-1,0,1]]",
+      "explanation": "After sorting: [-4,-1,-1,0,1,2]. Fix -1 (index 1), two pointers find (-1,2) and (0,1). Fix -1 at index 2 is skipped as duplicate."
+    },
+    {
+      "input": "nums = [0,0,0]",
+      "output": "[[0,0,0]]",
+      "explanation": "The only triplet is (0,0,0). Duplicate skips handle inner pointers correctly."
+    },
+    {
+      "input": "nums = [-2,0,1,1,2]",
+      "output": "[[-2,0,2],[-2,1,1]]",
+      "explanation": "Two valid triplets exist."
+    }
+  ],
+  "constraints": [
+    "3 <= nums.length <= 3000",
+    "−10^5 <= nums[i] <= 10^5",
+    "Answer must not contain duplicate triplets"
+  ],
+  "intuition": "The brute force — check every triplet with three nested loops — is O(n^3). The key insight is to break the 3Sum into a 1+2 decomposition: fix one number and reduce the remaining problem to 2Sum on a sorted subarray. Sorting gives you structure you can exploit. Once sorted, for every fixed num1, the remaining two must sum to -num1. Since the subarray is sorted, a left pointer starting just after i and a right pointer at the end will converge: if the sum is too large, shrink from the right; if too small, grow from the left; if exact, record and advance both. The hard part is not the logic — it is the duplicate handling. Without it you get repeat triplets. There are two places where duplicates creep in: the outer fixed element (skip if it is the same as the one before it) and the inner two pointers after finding a valid triplet (advance past any repeated values before moving on). Sorting is what makes both skips straightforward — duplicates are always adjacent.",
+  "why_sorting_helps": "Sorting does three things at once: it enables the two-pointer convergence (works because the array is ordered), it groups duplicates together (makes skipping them O(1)), and it provides an implicit early exit — if num1 > 0, all three numbers are positive and cannot sum to 0, so you can break.",
+  "duplicate_handling": {
+    "outer_skip": "After recording a valid triplet or moving past an i, if sorted_nums[i] == sorted_nums[i-1] and i > 0, skip. The i > 0 guard prevents comparing against a nonexistent index at i=0.",
+    "inner_skip_left": "After appending a triplet, advance left past all repeats of sorted_nums[left] before the final left += 1. This prevents re-recording the same triplet with the same left value.",
+    "inner_skip_right": "Similarly advance right past all repeats of sorted_nums[right] before the final right -= 1.",
+    "order_matters": "The inner skips happen INSIDE the if-equal block, before the final left += 1 and right -= 1. If you put them outside, you over-advance the pointers."
+  },
+  "recurrence": {
+    "target": "num1 + sorted_nums[left] + sorted_nums[right] == 0, equivalently sorted_nums[left] + sorted_nums[right] == -num1",
+    "too_large": "sum > 0 — right pointer is too large, shrink: right -= 1",
+    "too_small": "sum < 0 — left pointer is too small, grow: left += 1",
+    "exact": "append triplet, skip inner duplicates, left += 1, right -= 1"
+  },
+  "approach": {
+    "name": "Sort + Fix one + Two pointers",
+    "steps": [
+      "Sort the array. Use sorted() to preserve the original (or sort in-place with nums.sort()).",
+      "Iterate i from 0 to n-1. For each i, set num1 = sorted_nums[i].",
+      "Outer duplicate skip: if i > 0 and sorted_nums[i] == sorted_nums[i-1], continue.",
+      "Optional early exit: if num1 > 0, break — all remaining numbers are also positive, sum can't be 0.",
+      "Set left = i + 1, right = n - 1.",
+      "While left < right: compute the three-way sum.",
+      "If sum == 0: append [num1, sorted_nums[left], sorted_nums[right]]. Advance left past duplicates. Advance right past duplicates. Then left += 1, right -= 1.",
+      "If sum > 0: right -= 1.",
+      "If sum < 0: left += 1.",
+      "Return res."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "class Solution:\n    # Intuition:\n    # break the problem into pieces\n    # sort the array (helps us with the advantage of increasing order)\n    # pick one number first (outer loop)\n    # do two pointers for the remaining two to find a particular two-sum == -num1\n    # skip duplicates at both the outer and inner level\n\n    def threeSum(self, nums: list[int]) -> list[list[int]]:\n        res = []\n        # PY: nums.sort() modifies the original list in-place\n        # PY: sorted() returns a new sorted list, leaving the original untouched\n        sorted_nums = sorted(nums)\n        n = len(nums)\n\n        for i in range(n):\n            num1 = sorted_nums[i]\n\n            # outer duplicate skip: start check from i == 1\n            # if current == previous, we already explored all triplets with this value\n            if i > 0 and sorted_nums[i] == sorted_nums[i-1]:\n                continue\n\n            # two pointer setup: search window is everything after index i\n            left = i + 1\n            right = n - 1\n\n            while left < right:\n                if num1 + sorted_nums[left] + sorted_nums[right] == 0:\n                    res.append([num1, sorted_nums[left], sorted_nums[right]])\n\n                    # inner duplicate skip for left pointer\n                    # advance past all copies of the current left value\n                    while left < right and sorted_nums[left] == sorted_nums[left + 1]:\n                        left += 1\n                    # inner duplicate skip for right pointer\n                    # advance past all copies of the current right value\n                    while left < right and sorted_nums[right] == sorted_nums[right - 1]:\n                        right -= 1\n\n                    # move both pointers inward to look for the next unique triplet\n                    left += 1\n                    right -= 1\n\n                elif num1 + sorted_nums[left] + sorted_nums[right] > 0:\n                    # sum too large: shrink from the right\n                    right -= 1\n                else:\n                    # sum too small: grow from the left\n                    left += 1\n\n        return res\n\n        # T.C: O(n^2) — O(n log n) sort + O(n^2) for outer loop x inner two-pointer\n        # S.C: O(log n) for the sort (in-place via Timsort); O(n) if you count sorted_nums copy"
+  },
+  "complexity": {
+    "time": "O(n^2) — O(n log n) for sorting plus O(n^2) for the outer loop times the inner two-pointer pass which is O(n) each",
+    "space": "O(log n) if sorting in-place (Timsort stack space). O(n) as written since sorted() creates a new list. Output space not counted."
+  },
+  "space_note": "The code uses sorted() which allocates a new O(n) list. If you use nums.sort() instead and work directly on nums, space reduces to O(log n) from the Timsort call stack. Neither is wrong — just be precise when stating complexity.",
+  "python_gotchas": [
+    "nums.sort() modifies the original list in-place and returns None. sorted(nums) returns a new sorted list and leaves nums unchanged. Using nums.sort() and then assigning sorted_nums = nums.sort() gives sorted_nums = None — a classic bug.",
+    "The outer duplicate skip guard is 'i > 0 and ...'. Without i > 0, at i=0 you compare sorted_nums[0] with sorted_nums[-1] (the last element) — Python's negative indexing silently wraps, causing missed triplets for inputs like [0,0,0].",
+    "The inner duplicate skips use sorted_nums[left + 1] and sorted_nums[right - 1]. These are safe only while left < right. Always keep the left < right guard in these inner while loops or you risk IndexError when pointers cross.",
+    "The inner skips happen BEFORE the final left += 1 and right -= 1. If you accidentally put the skips after those increments, you skip past valid new triplets.",
+    "If num1 > 0, you can break early — since the array is sorted, all subsequent num1 values are also positive and the sum can never be 0. This is a useful optimization not present in the base code.",
+    "The output is a list of lists, not a list of tuples or a set. LeetCode accepts both but be consistent."
+  ],
+  "early_exit_optimization": {
+    "code": "if num1 > 0: break",
+    "where": "Add inside the outer for loop, right after the duplicate skip check.",
+    "why": "After sorting, if num1 > 0, then sorted_nums[left] >= num1 > 0 and sorted_nums[right] >= sorted_nums[left] > 0. All three are positive, sum can't be 0. All future i will also have num1 > 0. Break, not continue."
+  },
+  "related_problems": [
+    {
+      "title": "Two Sum (LC 1)",
+      "relation": "3Sum reduces to 2Sum after fixing one element. The two-pointer technique here is the sorted-array equivalent of the hashmap approach in Two Sum."
+    },
+    {
+      "title": "Two Sum II — Input Array is Sorted (LC 167)",
+      "relation": "The inner two-pointer logic is exactly Two Sum II. Once you fix num1, you need two values from the remaining sorted subarray that sum to -num1."
+    },
+    {
+      "title": "4Sum (LC 18)",
+      "relation": "Same pattern extended one level: fix two elements with two outer loops (with duplicate skips at each level), then apply the two-pointer inner pass. O(n^3)."
+    },
+    {
+      "title": "3Sum Closest (LC 16)",
+      "relation": "Almost identical structure — sort, fix one, two pointers. Instead of checking for exactly 0, track the closest sum seen so far and update when a new closer sum is found."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "Why do we sort the array before applying the two-pointer technique?",
+      "options": [
+        "Sorting ensures all negative numbers come first so we can skip positives",
+        "Sorting enables the two-pointer convergence (ordered structure lets us shrink/grow the window meaningfully) and groups duplicates together so they can be skipped in O(1)",
+        "Sorting removes duplicate values from the array before processing",
+        "Sorting reduces the time complexity from O(n^2) to O(n log n)"
+      ],
+      "answer": 1,
+      "explanation": "Two pointers only work on sorted arrays because you can reason about direction: if the sum is too large, moving right inward reduces it; if too small, moving left outward increases it. On an unsorted array, no such guarantee exists. Sorting also clusters duplicates adjacently, making the skip logic trivial — just compare to your immediate neighbor."
+    },
+    {
+      "id": 2,
+      "question": "What is the overall time complexity and what contributes to it?",
+      "options": [
+        "O(n log n) — dominated entirely by the sort",
+        "O(n^3) — three nested loops",
+        "O(n^2) — O(n log n) sort plus O(n) outer loop times O(n) two-pointer inner pass",
+        "O(n) — two pointers traverse the array exactly once"
+      ],
+      "answer": 2,
+      "explanation": "The sort is O(n log n). For each of the n values of i, the two-pointer while loop is O(n) in the worst case (left and right together traverse at most n-i-1 elements). Total inner work is O(n^2). O(n^2) dominates O(n log n), giving O(n^2) overall."
+    },
+    {
+      "id": 3,
+      "question": "What is the difference between nums.sort() and sorted(nums) in Python?",
+      "options": [
+        "sorted() is faster because it uses a different algorithm than sort()",
+        "nums.sort() modifies the original list in-place and returns None. sorted(nums) returns a new sorted list and leaves nums unchanged.",
+        "nums.sort() sorts descending by default; sorted() sorts ascending",
+        "They are identical — both return a sorted list"
+      ],
+      "answer": 1,
+      "explanation": "nums.sort() is an in-place operation — it mutates nums and returns None. A classic bug: sorted_nums = nums.sort() assigns None to sorted_nums. sorted(nums) creates and returns a brand new sorted list. The original nums is untouched. Use sorted() when you need to preserve the input or assign to a new variable."
+    },
+    {
+      "id": 4,
+      "question": "Why does the outer duplicate skip have the guard 'i > 0' before the equality check?",
+      "options": [
+        "Because i=0 is always negative and can never form a valid triplet",
+        "Without i > 0, at i=0 the check compares sorted_nums[0] with sorted_nums[-1] (the last element via Python's negative indexing), which can incorrectly skip i=0 and miss valid triplets like [0,0,0]",
+        "Because the first element is always part of the optimal triplet",
+        "i > 0 prevents the while loop from running before initialization"
+      ],
+      "answer": 1,
+      "explanation": "At i=0, i-1 = -1. Python does not throw an IndexError for sorted_nums[-1] — it silently accesses the last element. If sorted_nums[0] happens to equal sorted_nums[-1] (e.g., [0,0,0] sorts to [0,0,0] and 0 == 0), i=0 would be skipped entirely, missing [0,0,0] as output. The i > 0 guard ensures we only skip when there is a genuine previous element to compare against."
+    },
+    {
+      "id": 5,
+      "question": "What do the inner duplicate skip loops do, and why must they execute BEFORE the final left += 1 and right -= 1?",
+      "options": [
+        "They remove duplicates from the result list and must run last to clean up",
+        "After finding a valid triplet, they advance left past all equal copies of sorted_nums[left] and right past all equal copies of sorted_nums[right]. Running BEFORE the final increments means the final left += 1 lands on a new unique value, preventing duplicate triplets from being recorded.",
+        "They validate the triplet before appending and must run before the append",
+        "They reposition the pointers to the center of the remaining subarray"
+      ],
+      "answer": 1,
+      "explanation": "Suppose sorted_nums = [-2,0,0,0,2,2] and we find triplet (-2,0,2). The inner left-skip advances left from the first 0 to the last 0 (stopping when sorted_nums[left] != sorted_nums[left+1]). Then left += 1 moves to 2. If we skipped AFTER the increment, left would land on the second 0 first, and the while loop would re-record (-2,0,2) as a duplicate."
+    },
+    {
+      "id": 6,
+      "question": "When the three-sum equals exactly 0, why do we move BOTH pointers inward (left += 1, right -= 1) instead of just one?",
+      "options": [
+        "Moving only one pointer is also correct and is a valid optimization",
+        "Moving both pointers is required because keeping either pointer fixed and moving only the other cannot produce a new sum of 0 with a different triplet — if left stays fixed, no right value can compensate for an unchanged left.",
+        "We move both to avoid an infinite loop since the sum is already 0",
+        "The constraint says i != j != k, so we must advance both indices"
+      ],
+      "answer": 2,
+      "explanation": "After recording the triplet at (left, right), we need a new pair. If we only move left forward (left += 1), the new sum is num1 + sorted_nums[left+1] + sorted_nums[right]. Since sorted_nums[left+1] >= sorted_nums[left] and sorted_nums[right] is fixed, the sum can only stay the same or increase. To find another pair summing to the same target, both must change. Moving both is necessary for completeness."
+    },
+    {
+      "id": 7,
+      "question": "What early exit optimization can be added to the outer loop, and why does it work?",
+      "options": [
+        "If num1 == 0, break — a zero anchor means no other values are relevant",
+        "If num1 > 0, break — since the array is sorted, all remaining num1 values are also > 0, and three positive numbers cannot sum to 0",
+        "If n < 3, return [] — not enough elements",
+        "If sorted_nums[-1] < 0, break — all numbers are negative"
+      ],
+      "answer": 1,
+      "explanation": "After sorting, if sorted_nums[i] > 0, then sorted_nums[left] >= sorted_nums[i] > 0 and sorted_nums[right] >= sorted_nums[left] > 0. The sum of three positive numbers is always positive, never 0. Since future iterations only increase num1 further, we can break (not just continue) and skip all remaining work."
+    },
+    {
+      "id": 8,
+      "question": "What happens to the inner while loops if you remove the 'left < right' guard inside them?",
+      "options": [
+        "Nothing — left and right can never cross during duplicate skipping",
+        "When the remaining duplicates span the entire window, left could advance past right (or vice versa), causing sorted_nums[left + 1] or sorted_nums[right - 1] to access out-of-bounds indices",
+        "The loops run faster without the extra condition check",
+        "left and right wrap around due to Python negative indexing"
+      ],
+      "answer": 1,
+      "explanation": "Consider sorted_nums = [0,0,0,0,0] with num1=0. After appending [0,0,0], the inner left-skip keeps advancing while sorted_nums[left] == sorted_nums[left+1]. Without the guard, left eventually reaches n-2, and sorted_nums[left+1] = sorted_nums[n-1] — still valid. But then left += 1 makes left = n-1 = right, and on the next inner iteration sorted_nums[left+1] is out of bounds. The guard prevents this."
+    },
+    {
+      "id": 9,
+      "question": "What is the space complexity of this solution as written (using sorted()), and how can it be reduced?",
+      "options": [
+        "O(1) — no extra space is used beyond the result list",
+        "O(n) for the sorted_nums copy. Using nums.sort() in-place reduces sort-related space to O(log n) for Timsort's call stack. Output space is not counted in complexity analysis.",
+        "O(n^2) because the result list can contain O(n^2) triplets",
+        "O(n log n) because sorted() uses a merge sort variant"
+      ],
+      "answer": 1,
+      "explanation": "sorted() allocates a new list of size n — O(n) auxiliary space. Using nums.sort() instead sorts in-place; Python's Timsort uses O(log n) stack space for recursion. The result list is output space and by convention is not counted in auxiliary space complexity. Code as written: O(n). With nums.sort(): O(log n)."
+    },
+    {
+      "id": 10,
+      "question": "Why does the two-pointer approach work for finding pairs that sum to a target, rather than using a hashset?",
+      "options": [
+        "Hashsets cannot handle negative numbers",
+        "The sorted array lets us use O(1) space and O(n) time with two pointers converging from both ends. A hashset would need O(n) extra space. Both are O(n) time per pass but two pointers is space-efficient and handles duplicates more naturally here.",
+        "Hashsets would give O(n^2) time for this problem",
+        "Two pointers always finds more triplets than a hashset approach"
+      ],
+      "answer": 1,
+      "explanation": "Both approaches find pairs summing to a target in O(n) time. The two-pointer approach uses O(1) extra space (beyond the sort). The hashset approach needs O(n) extra space and duplicate deduplication becomes trickier — you would need to carefully track which values have been used. Since we already pay O(n log n) to sort, the two pointers come free and duplicate handling is cleaner."
+    },
+    {
+      "id": 11,
+      "question": "For input nums = [0,0,0,0], what does the algorithm return?",
+      "options": [
+        "[[0,0,0],[0,0,0]] — two triplets because there are two ways to pick the same values",
+        "[[0,0,0]] — the duplicate skip at the outer level ensures only one triplet is returned",
+        "[] — all zeros are duplicates so all are skipped",
+        "An IndexError because all inner skips exhaust the array"
+      ],
+      "answer": 1,
+      "explanation": "sorted_nums = [0,0,0,0]. i=0: num1=0, no outer skip (i=0). left=1, right=3. Sum=0: append [0,0,0]. Inner skips advance left to 2 (sorted_nums[1]==sorted_nums[2]), then left += 1 makes left=3. left < right fails, inner while ends. left += 1 would make left=3=right, outer while ends. i=1: sorted_nums[1]==sorted_nums[0], skip. i=2, i=3 similarly skipped. Return [[0,0,0]]."
+    },
+    {
+      "id": 12,
+      "question": "How does this problem decompose into a known simpler problem?",
+      "options": [
+        "3Sum decomposes into three independent 1Sum problems",
+        "3Sum decomposes into: fix one element (outer loop), then solve 2Sum on the remaining sorted subarray with target = -num1",
+        "3Sum decomposes into two independent 2Sum problems run in parallel",
+        "3Sum decomposes into a BFS traversal on the number line"
+      ],
+      "answer": 1,
+      "explanation": "For each fixed num1 = sorted_nums[i], the problem becomes: find all pairs in sorted_nums[i+1..n-1] that sum to -num1. This is exactly the Two Sum II (sorted input) problem. The two-pointer technique is the canonical O(n) solution for that problem. Fixing one element and reducing dimensionality is a generalizable pattern that extends to 4Sum (fix two, two-pointer for the last pair)."
+    },
+    {
+      "id": 13,
+      "question": "Why do we set left = i + 1 rather than left = 0 for each iteration?",
+      "options": [
+        "Setting left = 0 would cause an infinite loop",
+        "Indices below i have already been used as num1 in previous iterations. Reusing them would produce triplets with the same three values in a different order — duplicates. Also, i itself cannot be reused since the problem requires distinct indices.",
+        "Setting left = 0 would make the two pointers start at the same position",
+        "The array to the left of i contains only processed values that are too small"
+      ],
+      "answer": 1,
+      "explanation": "We want each triplet to use three distinct index positions with no repeats. By fixing num1 at index i, the remaining two must come from i+1 to n-1. If left started at 0, we would consider indices already used as the outer fixed element — producing out-of-order duplicates or reusing the same index. Keeping left = i + 1 also means we never revisit pairs already considered in earlier outer iterations."
+    },
+    {
+      "id": 14,
+      "question": "For input nums = [-4,-1,-1,0,1,2] (already sorted), trace which triplets are found at i=1 (num1=-1).",
+      "options": [
+        "Only [-1,-1,2] is found",
+        "Only [-1,0,1] is found",
+        "[-1,-1,2] is found first, then after inner skips and pointer movement, [-1,0,1] is found",
+        "No triplets are found at i=1 because -1 is a duplicate of i=2"
+      ],
+      "answer": 2,
+      "explanation": "i=1, num1=-1. left=2, right=5. Sum=-1+(-1)+2=0: append [-1,-1,2]. Inner left skip: sorted_nums[2]==-1, sorted_nums[3]==0, no skip. Inner right skip: sorted_nums[5]==2, sorted_nums[4]==1, no skip. left=3, right=4. Sum=-1+0+1=0: append [-1,0,1]. Inner skips: no adjacent duplicates. left=4, right=3: left < right fails. End. Two triplets found at i=1."
+    },
+    {
+      "id": 15,
+      "question": "What is the maximum number of triplets the result can contain for an input of size n?",
+      "options": [
+        "Exactly n triplets",
+        "O(n^2) triplets in the worst case — e.g., a balanced array of n/3 copies each of -k, 0, k for varying k",
+        "O(n^3) triplets",
+        "Exactly 3 triplets regardless of input size"
+      ],
+      "answer": 1,
+      "explanation": "Consider n=6: [-3,-2,-1,1,2,3] gives 3 triplets. For larger n, the number of valid zero-sum triplets can grow as O(n^2). For example, if you have n/3 values of -k for k in 1..n/3, n/3 zeros, and n/3 values of k, each -k pairs with 0 and k giving O(n) triplets — but more adversarial constructions approach O(n^2). The output size is O(n^2) in the worst case, which also bounds the algorithm's true worst-case time."
+    },
+    {
+      "id": 16,
+      "question": "How does 3Sum extend to 4Sum (LC 18)?",
+      "options": [
+        "4Sum cannot be solved with two pointers — it requires DP",
+        "Add one more outer loop fixing a second element num2 = sorted_nums[j] for j from i+1 to n-1 (with its own duplicate skip). Then apply the two-pointer inner pass looking for pairs summing to target - num1 - num2. Time complexity becomes O(n^3).",
+        "4Sum is solved by running 3Sum twice and combining results",
+        "4Sum uses three pointers instead of two"
+      ],
+      "answer": 1,
+      "explanation": "The pattern generalizes: for kSum, fix k-2 elements with k-2 nested loops (each with duplicate skips), then apply the two-pointer pass for the final two. 3Sum: one outer loop + two pointers = O(n^2). 4Sum: two outer loops + two pointers = O(n^3). Each level adds one O(n) factor."
+    },
+    {
+      "id": 17,
+      "question": "3Sum Closest (LC 16) is a variant of this problem. What is the main structural difference in the approach?",
+      "options": [
+        "3Sum Closest requires sorting in descending order",
+        "Same sort-fix-two-pointer structure, but instead of checking for sum == 0, you compute abs(sum - target) at each step and update a running closest variable. No early exact match exit, and no need for the duplicate-skip logic since you want the single closest value.",
+        "3Sum Closest requires a priority queue instead of two pointers",
+        "3Sum Closest only works on arrays with no duplicates"
+      ],
+      "answer": 1,
+      "explanation": "The skeleton is identical: sort, outer loop fixes num1, inner two-pointer. The difference: for each (left, right) pair, compute current_sum and compare abs(current_sum - target) against the running best. Update best if closer. Still move right inward if sum > target and left outward if sum < target. No duplicate logic needed since you track a single closest value, not a set of exact triplets."
+    },
+    {
+      "id": 18,
+      "question": "What would go wrong if you did the inner duplicate skips AFTER the final left += 1 and right -= 1?",
+      "options": [
+        "Nothing — the result would be identical",
+        "The final increments move the pointers to a new position first. Then the skip loops advance past that new position's duplicates instead of the original position's duplicates, causing the pointers to overshoot and miss some valid unique triplets.",
+        "The inner skips would cause an IndexError",
+        "The final increments would be applied twice"
+      ],
+      "answer": 1,
+      "explanation": "Example: sorted_nums = [-2,0,0,2,2], num1=-2. Find triplet at left=1, right=4. Correct order: inner skips advance left from 1 to 2 (past duplicate 0), right from 4 to 3 (past duplicate 2). Then left=3, right=2: done. If you did final increments FIRST: left=2, right=3. Then skip loops: sorted_nums[2]==sorted_nums[3]? 0 != 2, no skip. left=3 > right=2: loop already invalid. You would not catch a case where the new position also has duplicates."
+    },
+    {
+      "id": 19,
+      "question": "For input nums = [1,2,-2,-1], what is the output?",
+      "options": [
+        "[[-2,-1,3]]",
+        "[[-2,1,1]]",
+        "[] — no triplet sums to 0",
+        "[[-1,0,1]]"
+      ],
+      "answer": 2,
+      "explanation": "sorted_nums = [-2,-1,1,2]. i=0, num1=-2: left=1,right=3. Sum=-2+(-1)+2=-1 < 0, left += 1. left=2,right=3. Sum=-2+1+2=1 > 0, right -= 1. left=2,right=2: left < right fails. i=1, num1=-1: left=2,right=3. Sum=-1+1+2=2 > 0, right -=1. left=2,right=2: fails. i=2 and i=3: both positive, no zero-sum possible. Return []."
+    },
+    {
+      "id": 20,
+      "question": "Why is the constraint 'left < right' used in the outer while loop rather than 'left != right' or 'left <= right'?",
+      "options": [
+        "left < right is just a style preference — all three are equivalent",
+        "left != right would also work, but left <= right would allow left == right which picks the same element as both the second and third number — violating the distinct indices requirement",
+        "left < right terminates one step earlier to avoid boundary issues",
+        "left != right could loop forever if the pointers skip over each other"
+      ],
+      "answer": 1,
+      "explanation": "If left == right, we would be using the same index for both the second and third number in the triplet — violating the distinct indices constraint. left <= right would include this case. left < right correctly enforces that the two pointers are at different positions. left != right would also work here since left only ever moves right and right only ever moves left, so they can only meet and never cross-skip. But left < right is more conventional and clearer."
+    },
+    {
+      "id": 21,
+      "question": "Can this problem be solved with a hashset instead of sorting and two pointers? What are the trade-offs?",
+      "options": [
+        "No — hashsets cannot store negative numbers",
+        "Yes — for each pair (i,j), check if -(nums[i]+nums[j]) exists in a set. O(n^2) time and O(n) space, same asymptotic complexity. But deduplicating the output requires additional set bookkeeping (e.g., storing tuples of sorted triplets), making it more complex to implement correctly than the sort+two-pointer approach.",
+        "Yes — and it is faster: O(n log n) time versus O(n^2)",
+        "No — hashsets produce the wrong answer for arrays with repeated values"
+      ],
+      "answer": 1,
+      "explanation": "A hashset-based approach works: for each pair (i,j), compute the needed third value and check the set. But to avoid duplicates in the output, you need to sort each triplet before inserting into a result set — or use a set of frozensets/sorted tuples. The code becomes more complex. Sort+two-pointer handles duplicates cleanly through the skip logic and is the standard interview approach."
+    },
+    {
+      "id": 22,
+      "question": "What is the significance of the sorted array for the two-pointer decision logic (right -= 1 vs left += 1)?",
+      "options": [
+        "It allows us to use binary search instead of a linear scan",
+        "Because the array is sorted, increasing left strictly increases the pair sum, and decreasing right strictly decreases the pair sum. This gives a deterministic direction to move each pointer — no guessing, no backtracking.",
+        "Sorting ensures num1 is always negative, making the target for two-sum always positive",
+        "It allows the duplicate skips to use direct index comparison instead of value comparison"
+      ],
+      "answer": 1,
+      "explanation": "On a sorted array, sorted_nums[left+1] >= sorted_nums[left], so moving left right increases the pair sum. sorted_nums[right-1] <= sorted_nums[right], so moving right left decreases the pair sum. This means: sum too large -> decrease by moving right inward; sum too small -> increase by moving left outward. Without sorted order, you have no basis for this direction decision."
+    },
+    {
+      "id": 23,
+      "question": "Input nums = [-1,0,1,2,-1,-4,0]. How many unique triplets does the output contain?",
+      "options": [
+        "2 — only [-1,-1,2] and [-1,0,1]",
+        "3 — [-1,-1,2], [-1,0,1], and [0,0,0] — wait, no [0,0,0] sums to 0 but needs three zeros",
+        "3 — [-1,-1,2], [-1,0,1], and [0,0,... there is only one extra 0]. Actually 2 unique triplets.",
+        "3 — [-1,-1,2], [-1,0,1], and [-4,0,4] — but 4 is not in the array"
+      ],
+      "answer": 1,
+      "explanation": "sorted_nums = [-4,-1,-1,0,0,1,2]. i=0 (num1=-4): no pair in [-1,-1,0,0,1,2] sums to 4. i=1 (num1=-1): find pairs summing to 1 from [-1,0,0,1,2]: (-1,2) -> [-1,-1,2], (0,1) -> [-1,0,1]. i=2: duplicate -1, skip. i=3 (num1=0): find pairs summing to 0 from [0,1,2]: no pair. i=4 (num1=0): duplicate skip. i=5,6 > 0: break (or just no valid pairs). Total: 2 unique triplets."
+    },
+    {
+      "id": 24,
+      "question": "What is the behavior when left and right both point to duplicate values and you find sum == 0 — will the duplicate skips always correctly advance to the next unique pair?",
+      "options": [
+        "No — the skips only handle one side at a time, so if both sides have duplicates you need to run them twice",
+        "Yes — the left skip advances left until sorted_nums[left] != sorted_nums[left+1], then left += 1 lands on the next unique value. Independently, the right skip advances right until sorted_nums[right] != sorted_nums[right-1], then right -= 1 lands on the next unique value. Both handle their side independently and correctly.",
+        "No — you need a separate deduplication pass over the result list after the main loop",
+        "Yes but only if both sides have the same number of duplicates"
+      ],
+      "answer": 1,
+      "explanation": "The two inner while loops are independent. The left loop stops when sorted_nums[left] != sorted_nums[left+1] (the NEXT element is different). Then left += 1 steps exactly onto that different next element. Symmetrically for right. They do not interfere with each other. After both skips plus the final increments, both pointers are on new unique values — ready for the next valid pair search."
+    },
+    {
+      "id": 25,
+      "question": "This problem requires distinct INDICES but not distinct VALUES. What would change if the problem required distinct VALUES instead?",
+      "options": [
+        "Nothing — the sort-and-skip approach already handles both cases identically",
+        "If distinct values were required, we could preprocess nums into a set to remove duplicates, then run the same algorithm. Some valid triplets using the same value at different indices (like [-1,-1,2]) would be excluded.",
+        "Distinct values would make the problem easier — just sort and run without any duplicate skip logic",
+        "Distinct values would require Dijkstra instead of two pointers"
+      ],
+      "answer": 1,
+      "explanation": "The current problem requires distinct indices (i != j != k) but allows the same VALUE to appear multiple times — e.g., [-1,-1,2] is valid because the two -1s come from different positions. If distinct values were required, [-1,-1,2] would be invalid since -1 repeats. In that case, deduplicating the input array first would suffice, and the inner duplicate skip logic would still prevent re-recording the same triplet. A subtle but important distinction."
+    }
+  ]
+}
