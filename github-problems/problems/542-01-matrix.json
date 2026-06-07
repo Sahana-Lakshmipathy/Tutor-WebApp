@@ -1,0 +1,105 @@
+{
+  "id": "542",
+  "title": "01 Matrix",
+  "difficulty": "Medium",
+  "tags": ["BFS", "Dynamic Programming", "Matrix", "Graph"],
+  "description": "Given an `m x n` binary matrix `mat`, return the distance of the nearest `0` for each cell.\n\nThe distance between two adjacent cells is `1`.",
+  "examples": [
+    {
+      "input": "mat = [[0,0,0],[0,1,0],[0,0,0]]",
+      "output": "[[0,0,0],[0,1,0],[0,0,0]]",
+      "explanation": "The center cell has one adjacent 0, so distance is 1."
+    },
+    {
+      "input": "mat = [[0,0,0],[0,1,0],[1,1,1]]",
+      "output": "[[0,0,0],[0,1,0],[1,2,1]]",
+      "explanation": "The bottom-center cell is 2 steps away from the nearest 0."
+    }
+  ],
+  "constraints": [
+    "m == mat.length",
+    "n == mat[i].length",
+    "1 <= m, n <= 10^4",
+    "1 <= m * n <= 10^4",
+    "mat[i][j] is either 0 or 1",
+    "There is at least one 0 in mat"
+  ],
+  "intuition": "**The naive approach** — for each `1`, run a BFS to find its nearest `0` — is O((m·n)²), which is too slow.\n\n**The key insight**: flip the question. Instead of asking *"how far is the nearest 0 from this 1?"*, ask *"how far does each 0 reach?"*\n\nStart a **multi-source BFS simultaneously from every `0`**. Each 0 begins at distance 0 and expands outward wave by wave. The first time a `1`-cell is reached by the BFS, that distance is guaranteed to be the minimum — because BFS explores in order of increasing distance.\n\nThis is the same trick used in **rotting oranges** and **walls and gates**: when you have multiple sources and want minimum distance to any source, seed all sources at once instead of running separate BFS per cell.",
+  "approach": {
+    "name": "Multi-source BFS",
+    "steps": [
+      "Scan the entire matrix. For each 0-cell, set dist[i][j] = 0 and push (i, j) into the BFS queue.",
+      "For every 1-cell, set dist[i][j] = infinity initially.",
+      "Run BFS. For each cell dequeued at distance d, check its 4 neighbors.",
+      "If a neighbor's current distance > d + 1, update it to d + 1 and enqueue it.",
+      "Because BFS visits by level, the first update to any cell is always the shortest path.",
+      "Return the dist matrix."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "from collections import deque\n\ndef updateMatrix(mat: list[list[int]]) -> list[list[int]]:\n    m, n = len(mat), len(mat[0])\n    dist = [[float('inf')] * n for _ in range(m)]\n    queue = deque()\n\n    # Seed BFS from every 0\n    for i in range(m):\n        for j in range(n):\n            if mat[i][j] == 0:\n                dist[i][j] = 0\n                queue.append((i, j))\n\n    dirs = [(0, 1), (0, -1), (1, 0), (-1, 0)]\n\n    while queue:\n        r, c = queue.popleft()\n        for dr, dc in dirs:\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < m and 0 <= nc < n:\n                # Only update if we found a shorter path\n                if dist[nr][nc] > dist[r][c] + 1:\n                    dist[nr][nc] = dist[r][c] + 1\n                    queue.append((nr, nc))\n\n    return dist\n\n# Time:  O(m * n)  — each cell enqueued at most once\n# Space: O(m * n)  — dist matrix + queue"
+  },
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "Why do we initialize the BFS queue with ALL 0-cells at the start, rather than running a separate BFS from each 0?",
+      "options": [
+        "To reduce space complexity from O(m·n) to O(1)",
+        "Multi-source BFS gives every cell the minimum distance to ANY 0 in a single O(m·n) pass",
+        "Single-source BFS doesn't work on binary matrices",
+        "It avoids needing a visited array"
+      ],
+      "answer": 1,
+      "explanation": "Running BFS from each 0 separately would be O((m·n)²) in the worst case. By seeding all 0s simultaneously, the BFS frontier expands outward from all sources at once — the first time any cell is reached is by definition the shortest path to any 0."
+    },
+    {
+      "id": 2,
+      "question": "What is the time complexity of the multi-source BFS solution?",
+      "options": [
+        "O(m·n·log(m·n))",
+        "O((m·n)²)",
+        "O(m·n)",
+        "O(m + n)"
+      ],
+      "answer": 2,
+      "explanation": "Each cell is added to the BFS queue at most once (only when a shorter distance is found, and since BFS processes in order, each cell is settled exactly once). With m·n cells each doing O(1) work, total is O(m·n)."
+    },
+    {
+      "id": 3,
+      "question": "What happens if you initialize dist[i][j] = 0 for all cells (not just 0s) before running BFS?",
+      "options": [
+        "The algorithm still works because BFS corrects the values",
+        "All distances remain 0 — the condition dist[nr][nc] > dist[r][c] + 1 is never true for 1-cells",
+        "It causes an infinite loop",
+        "Only the 0-cells are affected"
+      ],
+      "answer": 1,
+      "explanation": "If every cell starts at 0, then for any neighbor: 0 > 0 + 1 is false, so no cell ever gets updated. You'd return a matrix of all zeros. The infinity initialization for 1-cells is what allows BFS to propagate real distances."
+    },
+    {
+      "id": 4,
+      "question": "Which other LeetCode problem uses the exact same multi-source BFS pattern?",
+      "options": [
+        "Two Sum (LC 1)",
+        "Rotting Oranges (LC 994)",
+        "Binary Search (LC 704)",
+        "Longest Common Subsequence (LC 1143)"
+      ],
+      "answer": 1,
+      "explanation": "Rotting Oranges seeds BFS from all rotten oranges simultaneously and spreads outward — identical pattern. 'Walls and Gates' (LC 286) is another classic example of the same technique."
+    },
+    {
+      "id": 5,
+      "question": "Can this problem be solved with dynamic programming instead of BFS?",
+      "options": [
+        "No — DP cannot solve shortest-path problems on grids",
+        "Yes — two passes (top-left to bottom-right, then bottom-right to top-left) correctly propagate minimum distances",
+        "Yes — but only for square matrices",
+        "No — DP requires the graph to be a DAG"
+      ],
+      "answer": 1,
+      "explanation": "A DP solution works with two passes: first sweep top→bottom, left→right updating dist[i][j] = min(dist[i][j], dist[i-1][j]+1, dist[i][j-1]+1). Then sweep bottom→top, right→left for the remaining directions. Both BFS and DP give O(m·n) time."
+    }
+  ]
+}

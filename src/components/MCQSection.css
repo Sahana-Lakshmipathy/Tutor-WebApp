@@ -1,0 +1,141 @@
+.mcq-section {
+  margin-top: 8px;
+}
+
+.mcq-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.mcq-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  flex: 1;
+}
+
+.mcq-score {
+  font-size: 12px;
+  color: #888;
+  font-family: monospace;
+}
+
+.mcq-reset {
+  background: none;
+  border: 1px solid #333;
+  color: #666;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.mcq-reset:hover {
+  border-color: #888;
+  color: #aaa;
+}
+
+.mcq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.mcq-item {}
+
+.mcq-q {
+  font-size: 14px;
+  color: #ddd;
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.mcq-num {
+  color: #555;
+  font-family: monospace;
+  margin-right: 4px;
+}
+
+.mcq-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mcq-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: left;
+  color: #bbb;
+  font-size: 13px;
+  line-height: 1.5;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.mcq-option:hover:not(:disabled) {
+  border-color: #555;
+  color: #fff;
+}
+
+.mcq-option:disabled {
+  cursor: default;
+}
+
+.mcq-option.correct {
+  border-color: #4caf50;
+  background: #4caf500f;
+  color: #7dce80;
+}
+
+.mcq-option.wrong {
+  border-color: #f44336;
+  background: #f443360f;
+  color: #e57373;
+}
+
+.mcq-option.dim {
+  opacity: 0.4;
+}
+
+.mcq-opt-letter {
+  font-family: monospace;
+  font-size: 11px;
+  color: #555;
+  font-weight: 600;
+  min-width: 16px;
+  padding-top: 1px;
+}
+
+.mcq-option.correct .mcq-opt-letter { color: #4caf50; }
+.mcq-option.wrong .mcq-opt-letter { color: #f44336; }
+
+.mcq-explanation {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: #0d0d0d;
+  border: 1px solid #222;
+  border-left: 3px solid #555;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #999;
+  line-height: 1.6;
+}
+
+.mcq-exp-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #555;
+  margin-bottom: 6px;
+}
