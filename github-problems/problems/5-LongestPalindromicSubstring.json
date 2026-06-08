@@ -2,7 +2,12 @@
   "id": "5",
   "title": "Longest Palindromic Substring",
   "difficulty": "Medium",
-  "tags": ["String", "Dynamic Programming", "Two Pointers", "Expand Around Center"],
+  "tags": [
+    "String",
+    "Dynamic Programming",
+    "Two Pointers",
+    "Expand Around Center"
+  ],
   "description": "Given a string s, return the longest palindromic substring in s.",
   "examples": [
     {
@@ -80,12 +85,37 @@
     }
   },
   "comparison_table": {
-    "columns": ["Approach", "Time", "Space", "Notes"],
+    "columns": [
+      "Approach",
+      "Time",
+      "Space",
+      "Notes"
+    ],
     "rows": [
-      ["Brute Force", "O(n^3)", "O(1) or O(n)", "Easy to understand, too slow for n=1000"],
-      ["Dynamic Programming", "O(n^2)", "O(n^2)", "Classic DP, clear recurrence, high memory"],
-      ["Expand Around Center", "O(n^2)", "O(1)", "Best practical choice, simple code, optimal space"],
-      ["Manacher's Algorithm", "O(n)", "O(n)", "Theoretically optimal, complex to implement, rarely needed in interviews"]
+      [
+        "Brute Force",
+        "O(n^3)",
+        "O(1) or O(n)",
+        "Easy to understand, too slow for n=1000"
+      ],
+      [
+        "Dynamic Programming",
+        "O(n^2)",
+        "O(n^2)",
+        "Classic DP, clear recurrence, high memory"
+      ],
+      [
+        "Expand Around Center",
+        "O(n^2)",
+        "O(1)",
+        "Best practical choice, simple code, optimal space"
+      ],
+      [
+        "Manacher's Algorithm",
+        "O(n)",
+        "O(n)",
+        "Theoretically optimal, complex to implement, rarely needed in interviews"
+      ]
     ]
   },
   "dp_recurrence_explained": {
@@ -441,5 +471,19 @@
       "answer": 1,
       "explanation": "Manacher's has multiple subtleties: the transformation, the mirroring, correctly initializing p[i] from p[mirror] without exceeding the boundary, expanding beyond the boundary, and extracting the original string position from the transformed indices. One mistake in any step gives wrong results. For an interview where n <= 1000 and time is limited, the O(n^2) expand-around-center is the correct practical choice. Mention Manacher's as a follow-up to show awareness."
     }
-  ]
+  ],
+  "approach": {
+    "name": "Expand Around Center",
+    "steps": [
+      "For each index i, treat it as the center of an odd-length palindrome and call helper(i, i, s).",
+      "Also treat each gap between i and i+1 as the center of an even-length palindrome and call helper(i, i+1, s).",
+      "In helper(left, right): while both pointers are in bounds and s[left] == s[right], decrement left and increment right.",
+      "When expansion stops (mismatch or out of bounds), return s[left+1 : right] — both pointers overshot by one step.",
+      "Track the longest palindrome across all 2n-1 centers and return it."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "class Solution:\n    def longestPalindrome(self, s: str) -> str:\n        def helper(left, right, s):\n            while left >= 0 and right < len(s):\n                if s[left] == s[right]:\n                    left -= 1\n                    right += 1\n                else:\n                    break\n            # left went one too far left, right went one too far right\n            # palindrome is s[left+1 : right]\n            return s[left+1: right]\n\n        result = \"\"\n        for i in range(len(s)):\n            c1 = helper(i, i, s)       # odd-length: center at i\n            c2 = helper(i, i+1, s)     # even-length: center between i and i+1\n            candidate = c1 if len(c1) > len(c2) else c2\n            if len(candidate) >= len(result):\n                result = candidate\n        return result\n        # Time: O(n^2) | Space: O(1)"
+  }
 }
