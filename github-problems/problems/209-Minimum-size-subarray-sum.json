@@ -1,0 +1,427 @@
+{
+  "id": "209",
+  "title": "Minimum Size Subarray Sum",
+  "difficulty": "Medium",
+  "tags": ["Array", "Sliding Window", "Two Pointers", "Binary Search", "Prefix Sum"],
+  "description": "Given an array of positive integers nums and a positive integer target, return the minimal length of a subarray whose sum is greater than or equal to target. If there is no such subarray, return 0 instead.",
+  "examples": [
+    {
+      "input": "target = 7, nums = [2,3,1,2,4,3]",
+      "output": "2",
+      "explanation": "The subarray [4,3] has the minimal length with sum >= 7."
+    },
+    {
+      "input": "target = 4, nums = [1,4,4]",
+      "output": "1",
+      "explanation": "The subarray [4] at index 1 already meets the target."
+    },
+    {
+      "input": "target = 11, nums = [1,1,1,1,1,1,1,1]",
+      "output": "0",
+      "explanation": "Total sum of array is 8 < 11. No subarray meets the target."
+    },
+    {
+      "input": "target = 7, nums = [1,2,3,4,5]",
+      "output": "2",
+      "explanation": "[3,4] or [4,5] — both length 2 and sum >= 7."
+    }
+  ],
+  "constraints": [
+    "1 <= target <= 10^9",
+    "1 <= nums.length <= 10^5",
+    "1 <= nums[i] <= 10^5",
+    "All numbers are POSITIVE — critical for sliding window monotonicity"
+  ],
+  "intuition": "Use a sliding window with a left and right pointer. The right pointer expands the window one element at a time, always adding to curr_sum. Whenever curr_sum >= target, we have found a valid window — record its length and try to shrink it from the left to find a smaller valid window. Shrink by removing nums[left], incrementing left, and decrementing curr_len. Keep shrinking as long as the window remains valid. This works because all numbers are positive: adding more elements can only increase the sum, and removing from the left can only decrease it — the monotonicity that makes sliding window valid here. Without positive numbers this approach breaks.",
+  "why_positive_numbers_matter": "The sliding window shrink-while-valid logic relies on monotonicity: if curr_sum >= target and we remove nums[left] (a positive number), curr_sum strictly decreases. So we will always eventually fall below target and the while loop terminates. If negative numbers existed, removing nums[left] could increase curr_sum, making the while loop potentially infinite or causing us to miss valid windows. For arrays with negatives, use prefix sum + binary search (O(n log n)) or a deque-based approach.",
+  "why_curr_len_not_right_minus_left": "The code tracks curr_len explicitly alongside curr_sum. An equivalent formulation uses the right pointer index directly: 'for right in range(len(nums))' with 'length = right - left + 1'. Both are correct. Tracking curr_len is explicit and avoids index arithmetic but requires a separate variable. Using right - left + 1 is more concise. The code as written uses a for-each loop (no index variable) so curr_len is the natural choice.",
+  "while_vs_if": "A while loop is used (not an if) to shrink the window. After removing one element from the left, the window might STILL be >= target. We keep shrinking to find the minimum length. If we used 'if' we would stop after one shrink and miss shorter valid windows. Example: [3,4,3] target=7. At right=2 (char 3), sum=10 >= 7. Remove left: sum=7 still >= 7, shrink again: sum=3 < 7. The while loop catches both valid windows of lengths 3 and 2.",
+  "return_value": "min_len is initialized to float('inf'). If no valid subarray exists (total sum < target), min_len is never updated and stays infinity. Return 0 in that case. Otherwise return min_len. The ternary 'return 0 if min_len == float(\"inf\") else min_len' handles this cleanly.",
+  "core_invariant": "At every point in the outer for loop, the window [left, right] (implicitly, right is the current num position) has curr_sum as its running total. After the while loop, curr_sum < target — the window is the smallest valid window ending at the current right that still has sum >= target (or has been fully shrunk past validity).",
+  "approach": {
+    "name": "Sliding window — expand right, shrink left while valid",
+    "steps": [
+      "Initialize min_len = float('inf'), curr_sum = 0, curr_len = 0, left = 0.",
+      "For each num in nums (right pointer expanding):",
+      "  Add num to curr_sum. Increment curr_len.",
+      "  While curr_sum >= target: record min_len = min(min_len, curr_len). Remove nums[left] from curr_sum. Decrement curr_len. Increment left.",
+      "After the loop: return 0 if min_len is still infinity, else return min_len."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "from typing import List\n\nclass Solution:\n    # Intuition: use sliding window and length tracking\n    # to find the minimum length subarray\n    def minSubArrayLen(self, target: int, nums: List[int]) -> int:\n\n        min_len = float('inf')\n        curr_sum = 0\n        curr_len = 0\n        left = 0\n\n        for num in nums:\n            curr_sum += num        # expand window right\n            curr_len += 1\n\n            while curr_sum >= target:\n                # valid window found — record length, then try to shrink\n                min_len = min(min_len, curr_len)\n                curr_sum -= nums[left]  # remove leftmost element\n                curr_len -= 1\n                left += 1               # shrink from left\n\n        return 0 if min_len == float('inf') else min_len\n\n        # Time Complexity:  O(n) — each element added and removed at most once\n        # Space Complexity: O(1) — no extra data structures"
+  },
+  "complexity": {
+    "time": "O(n) — the right pointer visits each element exactly once (n steps). The left pointer only moves forward, never backward, and visits each element at most once across the entire algorithm (at most n steps total). Total: O(2n) = O(n).",
+    "space": "O(1) — only four scalar variables. No extra arrays or maps."
+  },
+  "amortized_analysis": "The while loop inside the for loop looks like it could be O(n^2). But left only ever moves forward. Over the entire algorithm, left moves at most n positions total. So the total while loop iterations across ALL outer for loop iterations is at most n. Total operations = n (right) + n (left) = 2n = O(n).",
+  "full_trace": {
+    "input": "target=7, nums=[2,3,1,2,4,3]",
+    "initial": "min_len=inf, curr_sum=0, curr_len=0, left=0",
+    "steps": [
+      "num=2: curr_sum=2, curr_len=1. 2<7 -> no while. State: sum=2,len=1,left=0.",
+      "num=3: curr_sum=5, curr_len=2. 5<7 -> no while. State: sum=5,len=2,left=0.",
+      "num=1: curr_sum=6, curr_len=3. 6<7 -> no while. State: sum=6,len=3,left=0.",
+      "num=2: curr_sum=8, curr_len=4. 8>=7 -> enter while: min_len=min(inf,4)=4. Remove nums[0]=2: sum=6,len=3,left=1. 6<7 -> exit while.",
+      "num=4: curr_sum=10, curr_len=4. 10>=7 -> enter while: min_len=min(4,4)=4. Remove nums[1]=3: sum=7,len=3,left=2. 7>=7 -> stay: min_len=min(4,3)=3. Remove nums[2]=1: sum=6,len=2,left=3. 6<7 -> exit while.",
+      "num=3: curr_sum=9, curr_len=3. 9>=7 -> enter while: min_len=min(3,3)=3. Remove nums[3]=2: sum=7,len=2,left=4. 7>=7 -> stay: min_len=min(3,2)=2. Remove nums[4]=4: sum=3,len=1,left=5. 3<7 -> exit while.",
+      "Loop ends. Return 2."
+    ]
+  },
+  "alternative_index_based_version": {
+    "description": "Using explicit right index instead of for-each and curr_len",
+    "code": "def minSubArrayLen(self, target, nums):\n    left = 0\n    curr_sum = 0\n    min_len = float('inf')\n    for right in range(len(nums)):\n        curr_sum += nums[right]\n        while curr_sum >= target:\n            min_len = min(min_len, right - left + 1)\n            curr_sum -= nums[left]\n            left += 1\n    return 0 if min_len == float('inf') else min_len",
+    "difference": "right - left + 1 replaces curr_len. Both are equivalent. This version requires index access so 'for num in nums' is replaced with 'for right in range(len(nums))'."
+  },
+  "binary_search_approach": {
+    "name": "Prefix Sum + Binary Search",
+    "time": "O(n log n)",
+    "space": "O(n)",
+    "when_to_use": "When numbers are not all positive — but note for this problem they are positive, so sliding window is preferred. This approach is included for completeness.",
+    "description": "Build a prefix sum array. For each starting index i, binary search for the smallest j such that prefix[j] - prefix[i] >= target. The subarray length is j - i.",
+    "code": "import bisect\n\ndef minSubArrayLen(self, target, nums):\n    n = len(nums)\n    prefix = [0] * (n + 1)\n    for i in range(n):\n        prefix[i+1] = prefix[i] + nums[i]\n\n    min_len = float('inf')\n    for i in range(n):\n        needed = target + prefix[i]\n        j = bisect.bisect_left(prefix, needed)\n        if j <= n:\n            min_len = min(min_len, j - i)\n\n    return 0 if min_len == float('inf') else min_len",
+    "why_bisect_left": "bisect_left finds the leftmost position where 'needed' can be inserted to keep prefix sorted — i.e., the first index j where prefix[j] >= needed. Since all nums are positive, prefix is strictly increasing, making binary search valid."
+  },
+  "comparison_table": {
+    "columns": ["Approach", "Time", "Space", "Handles Negatives?", "Notes"],
+    "rows": [
+      ["Sliding Window", "O(n)", "O(1)", "No — requires all positive", "Optimal for this problem"],
+      ["Prefix Sum + Binary Search", "O(n log n)", "O(n)", "No (needs sorted prefix)", "Good follow-up to discuss"],
+      ["Brute Force (nested loops)", "O(n^2)", "O(1)", "Yes", "Too slow for n=10^5"]
+    ]
+  },
+  "python_gotchas": [
+    "float('inf') is Python's way to represent positive infinity. It compares correctly with integers: float('inf') > any_integer is always True. min(float('inf'), 4) = 4 correctly.",
+    "The while loop uses curr_sum >= target (greater than OR equal). The problem asks for sum >= target, not strictly greater. Using > would miss subarrays that sum to exactly target.",
+    "curr_sum -= nums[left] uses the original nums array indexed by left — not num (the loop variable). num is the current right element being added. nums[left] is the left boundary being removed.",
+    "The for loop iterates 'for num in nums' — there is no right index variable. That is why curr_len is tracked separately. If you need right - left + 1, switch to 'for right in range(len(nums))' and use nums[right] instead of num.",
+    "left is initialized to 0 and never decremented — it only moves forward. This is the fundamental constraint that gives O(n) amortized time.",
+    "If nums is empty, the for loop does not execute, min_len stays float('inf'), and 0 is returned. The constraints say nums.length >= 1, but the code handles empty input gracefully anyway."
+  ],
+  "related_problems": [
+    {
+      "title": "Maximum Subarray (LC 53)",
+      "relation": "Kadane's algorithm also uses a running sum. That problem maximizes the subarray sum; this minimizes the subarray length meeting a sum threshold. Both are O(n) single-pass but the logic direction is opposite."
+    },
+    {
+      "title": "Subarray Sum Equals K (LC 560)",
+      "relation": "Similar 'subarray sum' framing but requires EXACT sum equality and allows negative numbers. Cannot use sliding window — uses prefix sum + hash map instead. Illustrates why sliding window only works for positive arrays."
+    },
+    {
+      "title": "Longest Substring Without Repeating Characters (LC 3)",
+      "relation": "Same expand-right-shrink-left sliding window structure. That problem shrinks when a duplicate is found; this one shrinks when the sum meets the target. The two-pointer mechanics are identical."
+    },
+    {
+      "title": "Minimum Window Substring (LC 76)",
+      "relation": "Harder sliding window — minimize window length while satisfying a character frequency constraint. Same while-loop shrink pattern but with a frequency map instead of a sum."
+    },
+    {
+      "title": "Maximum Sum of Subarray of Size K (LC variation)",
+      "relation": "Fixed-size sliding window — window size is constant k. This problem has variable window size, making it the more general case."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "Why does the sliding window approach only work when all numbers are positive?",
+      "options": [
+        "Because Python's float('inf') only compares correctly with positive numbers",
+        "Because negative numbers would make curr_sum overflow",
+        "Positive numbers guarantee that adding an element strictly increases curr_sum and removing one strictly decreases it. This monotonicity means the while loop correctly shrinks toward the minimum valid window. With negatives, removing nums[left] could increase curr_sum — breaking the shrink logic.",
+        "The problem constraint forces positivity — it would work with negatives too"
+      ],
+      "answer": 2,
+      "explanation": "Sliding window relies on a predictable relationship between window size and window sum. With all positive numbers: extend right -> sum increases, shrink left -> sum decreases. This monotonicity lets us decide exactly when to shrink. With negatives, removing a negative number from the left INCREASES the sum — the while loop could run forever or miss valid windows. For arrays with negatives, prefix sum + binary search or hash map approaches are needed."
+    },
+    {
+      "id": 2,
+      "question": "Why is a while loop used for shrinking, not an if statement?",
+      "options": [
+        "while loops are faster than if statements in Python",
+        "After removing one element from the left, curr_sum might still be >= target. We need to keep shrinking to find the minimum valid window length. An if would stop after one shrink and miss shorter valid windows.",
+        "The if statement would cause an IndexError when left exceeds the array",
+        "while is needed to handle the case when target == 0"
+      ],
+      "answer": 1,
+      "explanation": "Consider target=7, window=[1,2,3,4] with sum=10. After shrinking once: [2,3,4] sum=9 >= 7 — still valid, shrink again. [3,4] sum=7 >= 7 — still valid, shrink again. [4] sum=4 < 7 — stop. The while loop found valid windows of length 4, 3, 2 and recorded all. An if would only find length 4 and miss the optimal length 2."
+    },
+    {
+      "id": 3,
+      "question": "What is the time complexity and how is it proven O(n) despite the nested while loop?",
+      "options": [
+        "O(n^2) — the while loop makes it quadratic",
+        "O(n log n) — similar to binary search problems",
+        "O(n) — the left pointer moves forward only and covers at most n positions total across all while loop iterations. Right covers exactly n positions. Total pointer movements: at most 2n.",
+        "O(n) only in the best case; O(n^2) in the worst case"
+      ],
+      "answer": 2,
+      "explanation": "Amortized analysis: left starts at 0 and only ever increments. It can increment at most n times total across the ENTIRE algorithm — not n times per outer iteration. The total number of while loop body executions across all iterations is bounded by n (total left movements). Right makes exactly n iterations. Total work = O(2n) = O(n). This is the standard amortized argument for all two-pointer sliding window problems."
+    },
+    {
+      "id": 4,
+      "question": "What does min_len = float('inf') initialization represent, and why not initialize to 0?",
+      "options": [
+        "float('inf') is a sentinel meaning 'no valid subarray found yet'. Any real subarray length will be smaller, so min() always updates correctly. 0 would be wrong because 0 means 'no answer exists' — using 0 as the initial min would make the first min() comparison return 0, never updating.",
+        "float('inf') is required by Python for arithmetic with large numbers",
+        "It represents the maximum possible subarray length",
+        "0 would work equally well as the initial value"
+      ],
+      "answer": 0,
+      "explanation": "We need min_len to represent 'not yet found'. float('inf') is the perfect sentinel: min(float('inf'), any_integer) = any_integer, so the first valid subarray always updates it. 0 would be wrong because the final return distinguishes 'no answer' (return 0) from 'answer found' (return min_len). If initialized to 0, we can't tell if 0 means 'no answer' or 'initial value not updated'."
+    },
+    {
+      "id": 5,
+      "question": "For target=7, nums=[2,3,1,2,4,3], trace the state when num=4 (the 5th element). What is min_len after this iteration?",
+      "options": [
+        "min_len=4 — only one shrink happens",
+        "min_len=3 — two shrinks happen: window [3,1,2,4] sum=10 shrinks to [1,2,4] sum=7 then sum falls below",
+        "min_len=2 — window shrinks all the way to [4,3]",
+        "min_len=inf — no valid window found yet"
+      ],
+      "answer": 1,
+      "explanation": "Before num=4: sum=6, len=3, left=1 (window=[3,1,2]). Add 4: sum=10, len=4. While: min_len=min(4,4)=4, remove nums[1]=3, sum=7, len=3, left=2. While: min_len=min(4,3)=3, remove nums[2]=1, sum=6, len=2, left=3. 6<7 -> exit while. min_len=3 after this iteration."
+    },
+    {
+      "id": 6,
+      "question": "Why does the code use 'curr_sum -= nums[left]' instead of 'curr_sum -= num'?",
+      "options": [
+        "num is not defined inside the while loop scope",
+        "num refers to the CURRENT right element being added. nums[left] refers to the LEFT boundary element being removed. These are different elements. Subtracting num would remove the wrong element from the sum.",
+        "nums[left] is faster to access than num",
+        "They are equivalent — num and nums[left] are the same value when the while loop runs"
+      ],
+      "answer": 1,
+      "explanation": "The for loop variable num is the element at the current RIGHT boundary of the window. When shrinking, we remove the element at the LEFT boundary, which is nums[left]. These are different positions in the array. Subtracting num (the right element) instead of nums[left] (the left element) would corrupt the running sum completely. The sliding window removes from the LEFT, not the right."
+    },
+    {
+      "id": 7,
+      "question": "What does the final return statement 'return 0 if min_len == float(\"inf\") else min_len' handle?",
+      "options": [
+        "The case where target == 0",
+        "The case where no subarray has sum >= target (total array sum < target). min_len was never updated from infinity. Return 0 per the problem statement ('return 0 if no such subarray exists').",
+        "Overflow protection for very large min_len values",
+        "The case where nums contains only one element"
+      ],
+      "answer": 1,
+      "explanation": "If the total sum of all elements is less than target, no valid subarray exists. The while loop condition curr_sum >= target is never triggered. min_len stays float('inf'). The ternary correctly returns 0. Example: target=11, nums=[1,1,1,1,1,1,1,1] — total sum=8 < 11 — return 0."
+    },
+    {
+      "id": 8,
+      "question": "How does the index-based version ('for right in range(len(nums))') differ from the for-each version ('for num in nums')?",
+      "options": [
+        "The index version is faster — indexing is O(1) vs O(n) for iteration",
+        "Functionally identical. The index version uses 'right - left + 1' for window length (requires the index). The for-each version uses curr_len (tracked separately). The index version avoids the curr_len variable but requires nums[right] instead of num and loses the cleaner for-each syntax.",
+        "The index version handles empty arrays; the for-each version does not",
+        "They have different time complexities"
+      ],
+      "answer": 1,
+      "explanation": "Both iterate the same elements in the same order. The for-each version (your code) tracks curr_len explicitly because there is no right index. The index version uses right - left + 1 which computes length from pointers. Both are O(n) time, O(1) space, and produce identical results. The for-each version is slightly more Pythonic; the index version is more explicit about pointer positions."
+    },
+    {
+      "id": 9,
+      "question": "target=4, nums=[1,4,4]. Trace the algorithm. At what step is the minimum length 1 found?",
+      "options": [
+        "When num=1 (first element) — immediately satisfies target",
+        "When num=4 (second element) — curr_sum=5>=4, shrink: min_len=2. Remove 1: sum=4>=4, shrink: min_len=1. Remove 4: sum=0. min_len=1.",
+        "When num=4 (third element) — the last element",
+        "The minimum is 2, not 1, for this input"
+      ],
+      "answer": 1,
+      "explanation": "num=1: sum=1,len=1. 1<4. num=4 (idx1): sum=5,len=2. 5>=4: min_len=min(inf,2)=2. Remove nums[0]=1: sum=4,len=1,left=1. 4>=4: min_len=min(2,1)=1. Remove nums[1]=4: sum=0,len=0,left=2. 0<4 exit. num=4 (idx2): sum=4,len=1. 4>=4: min_len=min(1,1)=1. Remove nums[2]=4: sum=0,len=0,left=3. Exit. Return 1."
+    },
+    {
+      "id": 10,
+      "question": "The problem condition is sum >= target (not sum == target). What would change if the condition were sum == target?",
+      "options": [
+        "Nothing — >= and == give the same results for positive arrays",
+        "The while condition and the comparison would use ==. This is a much harder problem (exact sum) and cannot use a simple sliding window — you would need a hash map (like LC 560 Subarray Sum Equals K) because shrinking from the left might overshoot the target.",
+        "You would just change >= to == in the while loop",
+        "The time complexity would improve to O(log n)"
+      ],
+      "answer": 1,
+      "explanation": "For sum >= target: sliding window works because there is a threshold — once you hit it, you can greedily shrink. For sum == target: shrinking might skip over the exact value. Example: target=6, window=[1,2,3] sum=6. Shrink: [2,3] sum=5 != 6 — but there could be another valid window. The >= threshold property is what makes sliding window applicable. Exact sum requires hash map (LC 560)."
+    },
+    {
+      "id": 11,
+      "question": "nums=[1,1,1,1,1], target=11. What does the algorithm return and why?",
+      "options": [
+        "5 — the entire array is the best we can do",
+        "0 — total array sum is 5 < 11. curr_sum never reaches target. while loop never runs. min_len stays float('inf'). Return 0.",
+        "11 — target is returned when unreachable",
+        "An overflow error due to float('inf') comparison"
+      ],
+      "answer": 1,
+      "explanation": "Maximum possible curr_sum = sum of all elements = 5. Since 5 < 11, curr_sum >= 11 is never True. The while loop body executes zero times. min_len = float('inf') throughout. Return 0 if min_len == float('inf'). Correct — no subarray exists with sum >= 11."
+    },
+    {
+      "id": 12,
+      "question": "What is the space complexity and what variables contribute to it?",
+      "options": [
+        "O(n) — the sliding window stores all elements between left and right",
+        "O(1) — only four scalar variables: min_len, curr_sum, curr_len, left. No arrays or maps allocated. The input nums is read-only.",
+        "O(log n) — the while loop creates implicit recursion",
+        "O(n) — curr_sum grows proportionally to the array size"
+      ],
+      "answer": 1,
+      "explanation": "The algorithm uses exactly four integer/float variables: min_len, curr_sum, curr_len, left. These are O(1) regardless of input size. The window [left, right] is a logical concept — no physical copy of the subarray is created. curr_sum tracks the window's sum without storing the elements. Total space: O(1)."
+    },
+    {
+      "id": 13,
+      "question": "How does the binary search approach work, and when would you choose it over sliding window?",
+      "options": [
+        "Binary search approach is always slower — never prefer it",
+        "Build a prefix sum array (O(n)). For each start index i, binary search for the smallest j where prefix[j] - prefix[i] >= target (O(log n) per query). Total: O(n log n), O(n) space. Choose it when interviewer asks for the O(n log n) solution, when numbers might not be positive in a variant, or as a follow-up after presenting sliding window.",
+        "Binary search is used to find the left boundary of the window",
+        "Binary search only works when the array is sorted"
+      ],
+      "answer": 1,
+      "explanation": "The prefix sum array is strictly increasing (all nums positive), enabling binary search. For each i, we need the smallest j such that prefix[j] >= target + prefix[i]. bisect_left finds this in O(log n). Total: O(n log n). This is a valid O(n log n) approach and is the expected follow-up when an interviewer asks 'can you do better than O(n^2)?'. The O(n) sliding window is the optimal solution for this specific problem."
+    },
+    {
+      "id": 14,
+      "question": "Can left ever become greater than the current right position (implicit in the for loop)?",
+      "options": [
+        "Yes — when every element is very large, left overtakes right",
+        "No. left is incremented inside the while loop which runs only when curr_sum >= target. After each left increment, curr_sum decreases (all nums positive). The while exits when curr_sum < target, at which point curr_len >= 0. If curr_len reaches 0, curr_sum = 0 < target (assuming target > 0), so the while exits. left can equal right but not exceed it.",
+        "Yes — for target=1 and all elements >= 1",
+        "Yes — this is why curr_len can become 0"
+      ],
+      "answer": 1,
+      "explanation": "curr_len counts elements in [left, right]. When the while loop shrinks to curr_len=0, left equals right+1 (empty window). curr_sum = 0 < target (since target >= 1 by constraint). The while condition fails. The next num in the outer loop starts fresh from this position. left can at most equal right+1 momentarily but immediately moves forward with the next right expansion."
+    },
+    {
+      "id": 15,
+      "question": "target=100, nums=[100]. What is returned?",
+      "options": [
+        "0 — single element arrays return 0",
+        "1 — nums[0]=100 >= target=100. Window [0,0] length 1 is valid.",
+        "100 — the value of the element",
+        "2 — needs two elements to confirm"
+      ],
+      "answer": 1,
+      "explanation": "num=100: curr_sum=100, curr_len=1. 100>=100 -> while: min_len=min(inf,1)=1. Remove nums[0]=100: curr_sum=0, curr_len=0, left=1. 0<100 -> exit while. Loop ends. Return 1. A single element equal to target satisfies sum >= target. Length 1 is the minimum possible."
+    },
+    {
+      "id": 16,
+      "question": "Why can't this sliding window approach be used for Subarray Sum Equals K (LC 560)?",
+      "options": [
+        "LC 560 requires a sorted array",
+        "LC 560 allows negative numbers (nums[i] can be negative). Removing nums[left] from the window might increase curr_sum, so shrinking left-to-right no longer moves the sum in a predictable direction. The monotonicity breaks. Additionally, LC 560 requires exact equality (==) not threshold (>=), so the shrink-while-valid logic does not apply.",
+        "LC 560 has a different time complexity requirement",
+        "Sliding window cannot count occurrences — only find min/max length"
+      ],
+      "answer": 1,
+      "explanation": "Two reasons: (1) LC 560 allows negative numbers — without monotonicity, sliding window direction decisions are invalid; (2) LC 560 asks for exact sum equality — there is no threshold to shrink toward. Both properties that make sliding window work here (positive numbers, >= threshold) are absent in LC 560. Hence LC 560 uses a completely different approach: prefix sum + hash map."
+    },
+    {
+      "id": 17,
+      "question": "nums=[2,3,1,2,4,3], target=7. After processing num=2 (4th element, index 3), what are the values of left, curr_sum, curr_len, and min_len?",
+      "options": [
+        "left=0, curr_sum=8, curr_len=4, min_len=4",
+        "left=1, curr_sum=6, curr_len=3, min_len=4",
+        "left=2, curr_sum=5, curr_len=2, min_len=inf",
+        "left=0, curr_sum=8, curr_len=4, min_len=inf"
+      ],
+      "answer": 1,
+      "explanation": "Before num=2 (idx3): sum=6(=[2,3,1]), len=3, left=0, min_len=inf. Add num=2: sum=8, len=4. While 8>=7: min_len=4. Remove nums[0]=2: sum=6, len=3, left=1. 6<7 exit. Final state: left=1, sum=6, len=3, min_len=4. The window is now [3,1,2]."
+    },
+    {
+      "id": 18,
+      "question": "What is the relationship between this problem and the 'Minimum Window Substring' (LC 76)?",
+      "options": [
+        "They are the same problem with different variable names",
+        "Both use the same expand-right-shrink-left sliding window pattern with a while loop. The difference: this problem shrinks while curr_sum >= target (sum threshold). LC 76 shrinks while all required characters are covered (frequency map constraint). The two-pointer structure is identical; the validity condition differs.",
+        "LC 76 uses binary search; this uses two pointers",
+        "This problem is a special case of LC 76 with character frequencies replaced by sums"
+      ],
+      "answer": 1,
+      "explanation": "Both problems: (1) expand the right boundary by one step, (2) check if the window is 'valid', (3) while valid, record the result and shrink from the left. For this problem, valid = curr_sum >= target. For LC 76, valid = all characters of t are present in the current window (tracked with a frequency map). The algorithmic skeleton is a direct template reuse."
+    },
+    {
+      "id": 19,
+      "question": "nums=[1,2,3,4,5], target=11. What is the minimum subarray length?",
+      "options": [
+        "3 — [3,4,5] sums to 12 >= 11",
+        "4 — [2,3,4,5] or [1,3,4,5]... wait [2,3,4,5]=14. Is [3,4,5]=12 length 3 valid?",
+        "3 — [3,4,5]=12>=11",
+        "2 — [5,6] but 6 is not in the array"
+      ],
+      "answer": 2,
+      "explanation": "Check length-3 subarrays: [1,2,3]=6<11, [2,3,4]=9<11, [3,4,5]=12>=11. Valid length-3 found. Check length-2: [4,5]=9<11. No valid length-2. Minimum = 3. Trace confirms: the while loop finds [3,4,5] at length 3 when right is at index 4."
+    },
+    {
+      "id": 20,
+      "question": "What is the brute force O(n^2) approach and why is it too slow?",
+      "options": [
+        "Sort the array and use binary search — O(n log n)",
+        "For each starting index i, extend right (j from i to n-1) accumulating the sum until it meets target. Record the length j-i+1. Two nested loops with O(1) inner work = O(n^2). Too slow for n=10^5 (10^10 operations).",
+        "Check every element individually — O(n)",
+        "Use recursion to check all subsets — O(2^n)"
+      ],
+      "answer": 1,
+      "explanation": "Brute force: outer loop i from 0 to n-1. Inner loop j from i to n-1, accumulating sum. Stop inner loop when sum >= target. Record j-i+1. O(n^2) iterations, O(1) per iteration. For n=10^5, that is 10^10 operations — far exceeds the ~10^8 operations per second typical of Python. The O(n) sliding window handles n=10^5 in microseconds."
+    },
+    {
+      "id": 21,
+      "question": "What does curr_len represent in the code, and what is its invariant?",
+      "options": [
+        "The total number of elements processed so far",
+        "The number of elements in the current window [left, implicit_right]. It equals the number of elements between left (inclusive) and the current num position (inclusive). Invariant: curr_len = (current right index) - left + 1.",
+        "The minimum subarray length found so far",
+        "The number of elements removed from the left so far"
+      ],
+      "answer": 1,
+      "explanation": "curr_len is incremented with each right expansion (when num is added) and decremented with each left shrink (when nums[left] is removed). At any point, curr_len = number of elements currently in the window = right_index - left + 1. It is the length of the subarray [nums[left], ..., num]. This is what gets recorded in min_len during the while loop."
+    },
+    {
+      "id": 22,
+      "question": "nums=[3,3,3,3], target=6. What is the answer, and how many times does the while loop body execute in total?",
+      "options": [
+        "Answer=2, while body executes 4 times total",
+        "Answer=2, while body executes 2 times total",
+        "Answer=1, while body executes 4 times",
+        "Answer=3, while body executes 1 time"
+      ],
+      "answer": 0,
+      "explanation": "num=3(idx0): sum=3,len=1. 3<6. num=3(idx1): sum=6,len=2. 6>=6: while#1 min_len=2. Remove 3: sum=3,len=1,left=1. 3<6 exit. num=3(idx2): sum=6,len=2. 6>=6: while#2 min_len=min(2,2)=2. Remove 3: sum=3,len=1,left=2. 3<6 exit. num=3(idx3): sum=6,len=2. 6>=6: while#3 min_len=2. Remove 3: sum=3,len=1,left=3. 3<6 exit. Total while body executions: 3. Answer=2. (Left moved from 0 to 3, three total left increments.)"
+    },
+    {
+      "id": 23,
+      "question": "If you accidentally wrote 'curr_sum >= target' as 'curr_sum > target' in the while condition, what test case would expose the bug?",
+      "options": [
+        "Any test case — the bug always causes wrong answers",
+        "target=7, nums=[3,4]: sum=7==target. With >=: while runs, min_len=2, correct. With >: 7>7 is False, while never runs, min_len=inf, returns 0. Wrong.",
+        "target=7, nums=[3,5]: sum=8>7 for both — no difference",
+        "The bug would never be exposed — > and >= are equivalent for integers"
+      ],
+      "answer": 1,
+      "explanation": "The problem says 'sum >= target'. Using > misses subarrays that sum to EXACTLY target. For target=7, nums=[3,4]: the correct answer is 2 (the entire array sums to 7). With >, 7 > 7 is False — the while loop never executes, min_len stays inf, returns 0. The problem statement explicitly includes equal-to, so >= is required."
+    },
+    {
+      "id": 24,
+      "question": "What is the connection between this problem and 'Maximum Sum Subarray of Size K' (fixed window)?",
+      "options": [
+        "They are the same problem — just rename variables",
+        "Fixed-size window: window always has exactly k elements. Slide it one position right each step. O(n) with simple add-new-remove-old logic. This problem has variable window size — we grow until valid, then shrink to minimum. Variable window is the generalization. Fixed window is simpler: no while loop needed, just if-then slide.",
+        "Fixed window requires binary search; variable window uses two pointers",
+        "They have different time complexities — fixed is O(1), variable is O(n)"
+      ],
+      "answer": 1,
+      "explanation": "Fixed window: for right in range(n): if right >= k: remove nums[right-k]; add nums[right]; update. No condition for shrinking — window size is constant. Variable window (this problem): grow until valid (while adding), then shrink while valid (while loop). The variable window is strictly more general. Both are O(n) but variable requires the two-pointer shrink logic."
+    },
+    {
+      "id": 25,
+      "question": "A senior engineer asks: 'What is the invariant maintained by this sliding window after each complete while loop execution?'",
+      "options": [
+        "curr_sum is always exactly equal to target after the while loop",
+        "After the while loop completes, curr_sum < target — the window is no longer valid. Combined with the fact that left was just advanced, this means [left, current_right] is the smallest window ending at current_right with sum >= target that we have already recorded. Any further shrinking from left would make it invalid.",
+        "min_len always equals the window size after the while loop",
+        "left always equals the index of the maximum element after the while loop"
+      ],
+      "answer": 1,
+      "explanation": "The while loop shrinks as long as curr_sum >= target. When it exits, curr_sum < target. This means the previous window (before the last left increment) was the smallest valid window ending at the current right pointer — and we already recorded its length with min_len = min(min_len, curr_len) at that step. This invariant — that we always record the minimum before breaking validity — is what guarantees correctness."
+    }
+  ]
+}
