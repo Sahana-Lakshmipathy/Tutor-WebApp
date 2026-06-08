@@ -1,0 +1,409 @@
+{
+  "id": "438",
+  "title": "Find All Anagrams in a String",
+  "difficulty": "Medium",
+  "tags": ["Sliding Window", "Hash Map", "String", "Two Pointers"],
+  "description": "Given two strings s and p, return an array of all the start indices of p's anagrams in s. You may return the answer in any order. An anagram is a string that contains the same characters as another string, just in a different order.",
+  "examples": [
+    {
+      "input": "s = \"cbaebabacd\", p = \"abc\"",
+      "output": "[0, 6]",
+      "explanation": "s[0:3]='cba' is an anagram of 'abc'. s[6:9]='bac' is an anagram of 'abc'."
+    },
+    {
+      "input": "s = \"abab\", p = \"ab\"",
+      "output": "[0, 1, 2]",
+      "explanation": "s[0:2]='ab', s[1:3]='ba', s[2:4]='ab' are all anagrams of 'ab'."
+    },
+    {
+      "input": "s = \"aa\", p = \"bb\"",
+      "output": "[]",
+      "explanation": "No window in s matches the character frequencies of p."
+    }
+  ],
+  "constraints": [
+    "1 <= s.length, p.length <= 3 * 10^4",
+    "s and p consist of lowercase English letters"
+  ],
+  "intuition": "An anagram is just a rearrangement — two strings are anagrams if and only if they have identical character frequency maps. So the problem reduces to: find every window of length len(p) in s whose frequency map matches p's frequency map. A fixed-size sliding window is perfect here. Maintain a window Counter of the current len(p) characters in s. Slide one step at a time: add the new right character, remove the old left character (only when the window exceeds len(p)). After each step, if window == need, record the left index. The key insight: the window size is always exactly len(p), so instead of variable-size expansion/shrinking, it is a pure slide.",
+  "fixed_vs_variable_window": {
+    "this_problem": "Fixed-size window of exactly len(p). Slide by adding right and removing left simultaneously (once window size exceeds len(p)). No complex validity condition — just compare frequency maps.",
+    "lc_76_minimum_window": "Variable-size window. Expand until valid (all t chars covered), shrink to minimize. Uses formed/required counters to avoid O(|t|) validity check each step.",
+    "lc_209_min_subarray": "Variable-size window. Expand unconditionally, shrink while sum >= target. Fixed numbers only (positive), validity is a single integer comparison."
+  },
+  "why_delete_zero_entries": "window[s[left]] -= 1. If the count drops to 0, the key is deleted from the Counter. This is critical for the 'window == need' comparison: Counter({'a':1}) != Counter({'a':1, 'b':0}). Keeping zero-count entries would cause false negatives — the window would never equal need even when it should. Deleting zero entries keeps the Counter clean.",
+  "counter_equality": "Python's Counter supports == comparison. Counter({'a':1,'b':2}) == Counter({'b':2,'a':1}) is True — order does not matter, only key-value pairs. This makes the anagram check a single O(|alphabet|) comparison instead of requiring a sorted string comparison. Two Counters are equal if they have identical non-zero entries.",
+  "why_while_not_if": "The window size can only exceed len(p) by at most 1 at any given step (right advances by exactly 1 each iteration). So the while loop runs at most once per outer iteration — it is effectively an if. The while is used for safety and clarity, but could be 'if right - left + 1 > len(p)' with identical behavior. The while version is slightly more defensive.",
+  "approach": {
+    "name": "Fixed-size sliding window with Counter equality",
+    "steps": [
+      "Early exit: if len(s) < len(p), return [].",
+      "Build need = Counter(p).",
+      "Initialize window = Counter(), left = 0, result = [].",
+      "For each right from 0 to len(s)-1: add s[right] to window.",
+      "If window size exceeds len(p): remove s[left] from window. Delete key if count hits 0. Increment left.",
+      "If window == need: append left to result.",
+      "Return result."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "from collections import Counter\nfrom typing import List\n\nclass Solution:\n    def findAnagrams(self, s: str, p: str) -> List[int]:\n\n        if len(s) < len(p):\n            return []\n\n        need = Counter(p)        # frequency map of p — never changes\n        window = Counter()       # frequency map of current window in s\n\n        left = 0\n        result = []\n\n        for right in range(len(s)):\n\n            # expand window: add new right character\n            window[s[right]] += 1\n\n            # keep window size == len(p) — remove leftmost char if oversized\n            while right - left + 1 > len(p):\n                window[s[left]] -= 1\n                if window[s[left]] == 0:\n                    del window[s[left]]   # clean up zero entries for correct == comparison\n                left += 1\n\n            # window is exactly len(p) — check if it is an anagram of p\n            if window == need:\n                result.append(left)\n\n        return result\n\n        # Time Complexity:  O(m + n) — O(n) to build need, O(m) sliding window\n        # Space Complexity: O(1)     — window and need each store at most 26 entries (lowercase letters)"
+  },
+  "complexity": {
+    "time": "O(m + n) — O(n) to build need from p. O(m) for the sliding window: right makes m iterations, left makes at most m total moves. Each step: O(1) Counter update + O(|alphabet|) for == comparison = O(26) = O(1). Total: O(m + n).",
+    "space": "O(1) — window and need store at most 26 entries each (lowercase English letters). Bounded by alphabet size, not input length. Result list is O(m) but is the required output."
+  },
+  "alternative_formed_approach": {
+    "description": "Instead of window == need (O(26) per step), use a formed counter like LC 76 to reduce each step to O(1) pure integer comparison.",
+    "tradeoff": "window == need is O(26) = effectively O(1) for this constraint. The formed approach adds code complexity without meaningful speedup here. window == need is simpler and preferred for this problem.",
+    "code": "def findAnagrams(self, s, p):\n    need = Counter(p)\n    have = Counter()\n    formed, required = 0, len(need)\n    left = 0\n    result = []\n    for right in range(len(s)):\n        c = s[right]\n        have[c] = have.get(c, 0) + 1\n        if c in need and have[c] == need[c]:\n            formed += 1\n        if right - left + 1 > len(p):\n            lc = s[left]\n            if lc in need and have[lc] == need[lc]:\n                formed -= 1\n            have[lc] -= 1\n            if have[lc] == 0:\n                del have[lc]\n            left += 1\n        if formed == required:\n            result.append(left)\n    return result"
+  },
+  "full_trace": {
+    "input": "s = \"cbaebabacd\", p = \"abc\"",
+    "need": "Counter({'a':1,'b':1,'c':1})",
+    "len_p": 3,
+    "steps": [
+      "right=0 'c': window={'c':1}. size=1, not >3. window!=need. result=[].",
+      "right=1 'b': window={'c':1,'b':1}. size=2, not >3. window!=need. result=[].",
+      "right=2 'a': window={'c':1,'b':1,'a':1}. size=3, not >3. window==need? Counter({'c':1,'b':1,'a':1})==Counter({'a':1,'b':1,'c':1}) YES. result=[0].",
+      "right=3 'e': window={'c':1,'b':1,'a':1,'e':1}. size=4 >3: remove s[0]='c', window['c']-=1=0, del window['c'], left=1. window={'b':1,'a':1,'e':1}. window!=need. result=[0].",
+      "right=4 'b': window={'b':2,'a':1,'e':1}. size=4 >3: remove s[1]='b', window['b']-=1=1, not 0 so no del, left=2. window={'b':1,'a':1,'e':1}. window!=need (has 'e'). result=[0].",
+      "right=5 'a': window={'b':1,'a':2,'e':1}. size=4 >3: remove s[2]='a', window['a']-=1=1, left=3. window={'b':1,'a':1,'e':1}. window!=need. result=[0].",
+      "right=6 'b': window={'b':2,'a':1,'e':1}. size=4 >3: remove s[3]='e', window['e']-=1=0, del window['e'], left=4. window={'b':2,'a':1}. window!=need. result=[0].",
+      "right=7 'a': window={'b':2,'a':2}. size=4 >3: remove s[4]='b', window['b']-=1=1, left=5. window={'b':1,'a':2}. window!=need. result=[0].",
+      "right=8 'c': window={'b':1,'a':2,'c':1}. size=4 >3: remove s[5]='a', window['a']-=1=1, left=6. window={'b':1,'a':1,'c':1}. window==need? YES. result=[0,6].",
+      "right=9 'd': window={'b':1,'a':1,'c':1,'d':1}. size=4 >3: remove s[6]='b', window['b']-=1=0, del window['b'], left=7. window={'a':1,'c':1,'d':1}. window!=need. result=[0,6].",
+      "Return [0, 6]."
+    ]
+  },
+  "python_gotchas": [
+    "Counter() from collections is a subclass of dict. Counter({'a':0}) != Counter({'a':1}) and Counter({'a':1}) != Counter({'a':1,'b':0}). Zero-value keys cause false inequality — always delete when count hits 0.",
+    "window[s[right]] += 1 works on an empty Counter because Counter auto-initializes missing keys to 0. No need for .get(key, 0) when using Counter directly.",
+    "The while loop shrinks by at most 1 per outer iteration (right advances by 1, so size can exceed len(p) by at most 1). Using 'if' instead of 'while' would be equivalent and slightly cleaner here.",
+    "result.append(left) not result.append(right - len(p) + 1). Both compute the same value when the window size is exactly len(p): left = right - len(p) + 1. Using left is cleaner since left is already tracked.",
+    "The early exit 'if len(s) < len(p): return []' is necessary. Without it, the algorithm would still work correctly (the window never reaches size len(p) so no match is ever found), but the early return is a clean optimization.",
+    "Counter(p) builds the frequency map in O(n). Do not rebuild it inside the loop.",
+    "need is never modified — only window changes. Modifying need would corrupt all future comparisons."
+  ],
+  "related_problems": [
+    {
+      "title": "Minimum Window Substring (LC 76)",
+      "relation": "Variable-size window version. Find the minimum window containing all characters of t. Uses formed/required counters instead of direct Counter equality. LC 438 is the simpler fixed-size case."
+    },
+    {
+      "title": "Permutation in String (LC 567)",
+      "relation": "Identical algorithm — just return True/False instead of collecting all starting indices. The code is the same with 'return True' instead of 'result.append(left)'."
+    },
+    {
+      "title": "Longest Substring Without Repeating Characters (LC 3)",
+      "relation": "Also a sliding window on a string with a hash map for character tracking. Variable-size window. Different validity condition (no duplicates vs frequency match)."
+    },
+    {
+      "title": "Group Anagrams (LC 49)",
+      "relation": "Groups strings that are anagrams of each other. Uses sorted string or tuple(Counter) as the hash key. Anagram detection is the same concept — equal character frequencies."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "Why must zero-count entries be deleted from window before the 'window == need' comparison?",
+      "options": [
+        "Deleting saves memory and makes the algorithm faster",
+        "Counter({'a':1,'b':0}) != Counter({'a':1}) in Python. Keeping zero entries causes the window to never equal need even when all frequencies match. Deleting when count hits 0 keeps window clean.",
+        "Python's Counter raises a KeyError for zero-value entries",
+        "Zero entries cause the while loop to run infinitely"
+      ],
+      "answer": 1,
+      "explanation": "Python Counter equality checks all key-value pairs. Counter({'a':1,'b':0}) has the key 'b' with value 0, while Counter({'a':1}) does not have 'b'. They are not equal. If you never delete zero-count keys, window would accumulate 'ghost' entries from characters that have been removed. These ghost entries prevent the == comparison from ever returning True even for valid anagram windows."
+    },
+    {
+      "id": 2,
+      "question": "Why is the window size check 'right - left + 1 > len(p)' and not 'right - left + 1 >= len(p)'?",
+      "options": [
+        "Using >= would skip the comparison step",
+        "We want the window to be EXACTLY len(p). right - left + 1 > len(p) means the window has grown one too large. We then shrink it by one step. After shrinking, size = len(p). Using >= would shrink when size == len(p) (correct size), leaving the window one too small.",
+        "> is faster than >= in Python",
+        "The first window (right=0 to len(p)-1) would be skipped with >="
+      ],
+      "answer": 1,
+      "explanation": "When right = len(p)-1 (first window): right - left + 1 = len(p). len(p) > len(p) is False — no shrink. Correct. When right = len(p) (one past first window): size = len(p)+1 > len(p) — shrink by one. After shrink: size = len(p). Correct. Using >= would trigger shrink when size equals len(p), reducing it to len(p)-1 — always one too small."
+    },
+    {
+      "id": 3,
+      "question": "What does Counter(p) do, and why is it used instead of a plain dict?",
+      "options": [
+        "Counter sorts the characters of p",
+        "Counter(p) builds a frequency map of p in O(n) in one call. Counter auto-initializes missing keys to 0, supports direct == comparison between two Counters, and is the standard Python tool for frequency counting. A plain dict would require .get(char, 0) patterns and manual comparison.",
+        "Counter deduplicates characters in p",
+        "Counter is faster than dict for single-character lookups"
+      ],
+      "answer": 1,
+      "explanation": "Counter(p) is syntactic sugar for a frequency dict. It takes any iterable and counts occurrences. Extra conveniences: missing key access returns 0 (not KeyError), Counter == Counter checks structural equality of non-zero entries, arithmetic operations (+, -) work between Counters. For this problem, the == comparison between window and need is the killer feature — one line instead of a loop checking all keys."
+    },
+    {
+      "id": 4,
+      "question": "What is the time complexity and what makes each part O(1)?",
+      "options": [
+        "O(m * n) — Counter comparison is O(n) at each of m steps",
+        "O(m + n). Building need: O(n). Sliding window: m steps, each O(1) Counter update + O(|alphabet|) == comparison. Since |alphabet|=26 for lowercase letters, O(26) = O(1). Total: O(m + n).",
+        "O(m^2) — the while loop makes shrinking quadratic",
+        "O(m log m) — Counter uses a sorted structure internally"
+      ],
+      "answer": 1,
+      "explanation": "The == comparison between two Counters is O(|alphabet|) — at most 26 entries. Since 26 is a constant, this is O(1). Counter updates (increment/decrement) are O(1) hash map operations. The while loop runs at most once per outer iteration (window can only exceed len(p) by 1 per step). Right makes m iterations, left makes at most m total. Total: O(m + n)."
+    },
+    {
+      "id": 5,
+      "question": "For s='abab', p='ab', trace right=1 and right=2.",
+      "options": [
+        "right=1: window={'a':1,'b':1}, window==need, result=[0]. right=2: window={'a':2,'b':1}, shrink left, window={'a':1,'b':1}, window==need, result=[0,1].",
+        "right=1: no match. right=2: window={'b':1,'a':1}, result=[0,2].",
+        "right=1: result=[1]. right=2: result=[1,2].",
+        "right=1: window grows to size 3, shrink needed."
+      ],
+      "answer": 0,
+      "explanation": "need=Counter({'a':1,'b':1}), len_p=2. right=1 'b': window={'a':1,'b':1}. size=2, not >2. window==need: YES. result=[0]. right=2 'a': window={'a':2,'b':1}. size=3>2: remove s[1]='b', window['b']-=1=0, del window['b'], left=1. window={'a':2}. Wait — after removing 'b', window={'a':2}? Then window!= need. Hmm. Let me retrace: after removing s[left=0]='a' at right=1... Actually at right=2: we first add 'a': window={'a':2,'b':1}. Size=3>2: remove s[left=0]='a': window['a']=1, left=1. window={'a':1,'b':1}==need: YES. result=[0,1]."
+    },
+    {
+      "id": 6,
+      "question": "Why does the code use 'result.append(left)' and not 'result.append(right - len(p) + 1)'?",
+      "options": [
+        "left is always 0 so both expressions are equivalent",
+        "When the window is exactly size len(p), left = right - len(p) + 1. Both expressions compute the same value. Using left is cleaner since it is already tracked as a variable and makes the intent clearer: 'record the start index of the current valid window'.",
+        "right - len(p) + 1 would cause an IndexError when right < len(p)",
+        "left gives the end index; right - len(p) + 1 gives the start"
+      ],
+      "answer": 1,
+      "explanation": "After the while loop ensures window size == len(p): left is the start of the window, right is the end. The start index = right - (len(p) - 1) = right - len(p) + 1. This equals left by definition when the window is exactly len(p) elements. Both expressions are correct. Using left is idiomatic and avoids recomputing from right."
+    },
+    {
+      "id": 7,
+      "question": "What is the space complexity, and why is it O(1) despite using two Counter objects?",
+      "options": [
+        "O(n) — need stores all characters of p",
+        "O(m) — window grows proportionally to s",
+        "O(1) — both need and window store at most 26 entries (lowercase English letters). The alphabet is fixed-size, so the maps are bounded by a constant regardless of m and n.",
+        "O(m + n) — total characters processed"
+      ],
+      "answer": 2,
+      "explanation": "need has at most len(unique chars in p) <= 26 entries. window has at most len(unique chars in current window) <= 26 entries. For lowercase English letters, the alphabet has exactly 26 characters. No matter how long s and p are, these maps can never exceed 26 entries. O(26) = O(1)."
+    },
+    {
+      "id": 8,
+      "question": "How is this problem different from Permutation in String (LC 567)?",
+      "options": [
+        "LC 567 allows uppercase letters; LC 438 does not",
+        "Algorithmically identical. LC 567 returns True/False (exists any anagram). LC 438 returns a list of all starting indices. The code differs only in the output: 'return True' instead of 'result.append(left)', and 'return False' at the end instead of 'return result'.",
+        "LC 567 uses a variable-size window; LC 438 uses a fixed window",
+        "LC 567 requires sorting; LC 438 uses Counter"
+      ],
+      "answer": 1,
+      "explanation": "The core algorithm — fixed-size sliding window with Counter equality — is identical. LC 567: check if ANY window matches (return True on first match, False at end). LC 438: collect ALL matching window start indices. One replaces result.append(left) with return True and adds return False. Everything else is the same."
+    },
+    {
+      "id": 9,
+      "question": "Can the while loop inside the for loop be replaced with an if statement? Why or why not?",
+      "options": [
+        "No — the while is necessary to shrink multiple steps at once",
+        "Yes — right advances by exactly 1 each outer iteration, so the window size can exceed len(p) by at most 1 per step. The while body runs at most once per outer iteration. 'if right - left + 1 > len(p)' is equivalent and slightly more explicit about this invariant.",
+        "No — removing the while would skip zero-entry deletion",
+        "Yes but only when len(p) == 1"
+      ],
+      "answer": 1,
+      "explanation": "The window grows by exactly 1 per step (one character added by right). It can overshoot by at most 1. The while loop body therefore executes at most once per outer for loop iteration. An if statement would be functionally equivalent. The while is slightly more defensive (handles hypothetical multi-step growth) but for this algorithm's structure, if suffices."
+    },
+    {
+      "id": 10,
+      "question": "What does 'window[s[right]] += 1' do when s[right] is a new character not seen before?",
+      "options": [
+        "Raises a KeyError — Counter requires key pre-initialization",
+        "Counter auto-initializes missing keys to 0. window[s[right]] += 1 is equivalent to window[s[right]] = window.get(s[right], 0) + 1. The new key is set to 1. No explicit initialization needed.",
+        "Sets the key to 1 only if it was previously deleted",
+        "Returns 0 for missing keys but does not store the new value"
+      ],
+      "answer": 1,
+      "explanation": "Counter is a subclass of dict with a custom __missing__ method that returns 0 for missing keys. So window['x'] returns 0 if 'x' is not in window, and window['x'] += 1 sets window['x'] = 1. This is Counter's primary convenience — no need for .get(key, 0) patterns. It behaves like defaultdict(int) but with the == comparison bonus."
+    },
+    {
+      "id": 11,
+      "question": "s='aa', p='bb'. What does the algorithm return?",
+      "options": [
+        "[0] — both strings have the same length",
+        "[] — need=Counter({'b':2}). window never contains 'b'. window({'a':2}) != need({'b':2}). No match found. Return [].",
+        "['aa'] — the substring itself",
+        "[0, 1] — two positions checked"
+      ],
+      "answer": 1,
+      "explanation": "need=Counter({'b':2}). Sliding window on 'aa': window always contains only 'a'. window never matches need. After both iterations, result=[] is returned. The early return check passes (len('aa')=2 >= len('bb')=2). But no match is found. Return []."
+    },
+    {
+      "id": 12,
+      "question": "Why is 'need' never modified during the loop, and what would happen if it were?",
+      "options": [
+        "Modifying need would speed up future comparisons",
+        "need is the reference frequency map of p. Every window comparison 'window == need' checks against need. Modifying need would corrupt the comparison — you would be checking against a changed target. need must remain constant throughout the entire loop.",
+        "need cannot be modified — Counter objects are immutable",
+        "Modifying need would cause an IndexError"
+      ],
+      "answer": 1,
+      "explanation": "need represents the ground truth: the frequency requirements of p. It is built once from Counter(p) and used as the comparison target in every 'window == need' check. If need were modified (e.g., decremented as characters are found), the comparison target changes mid-algorithm, producing wrong results. Counter objects are NOT immutable — they are dicts and can be modified. The discipline of not modifying need is a correctness invariant the programmer must maintain."
+    },
+    {
+      "id": 13,
+      "question": "What is the invariant maintained after the while loop in each iteration?",
+      "options": [
+        "window always contains exactly len(p) characters total (counting with multiplicity), and window matches need",
+        "window contains exactly len(p) characters total (sum of all counts == len(p)), which means it represents the frequency map of the substring s[left..right]. This invariant is established before the 'if window == need' check.",
+        "window and need always have the same keys",
+        "left is always equal to right - len(p)"
+      ],
+      "answer": 1,
+      "explanation": "After the while loop: right - left + 1 == len(p) (window spans exactly len(p) characters). The sum of all values in window == len(p). The window Counter accurately represents the frequencies of s[left..right]. This invariant ensures 'window == need' is a meaningful anagram check — we are always comparing equal-length substrings."
+    },
+    {
+      "id": 14,
+      "question": "p='abc', s='abc'. Trace the full algorithm.",
+      "options": [
+        "result=[0] after right=2",
+        "result=[] — the window is too small until right=2",
+        "right=0: window={'a':1}. right=1: window={'a':1,'b':1}. right=2: window={'a':1,'b':1,'c':1}==need -> result=[0]. Return [0].",
+        "result=[0,1,2] — three windows found"
+      ],
+      "answer": 2,
+      "explanation": "need=Counter({'a':1,'b':1,'c':1}), len_p=3. right=0: window={'a':1}, size=1, not >3. window!=need. right=1: window={'a':1,'b':1}, size=2, not >3. window!=need. right=2: window={'a':1,'b':1,'c':1}, size=3, not >3. window==need: result=[0]. Loop ends (len(s)=3). Return [0]."
+    },
+    {
+      "id": 15,
+      "question": "How does the formed-counter alternative approach avoid the O(|alphabet|) comparison at each step?",
+      "options": [
+        "It pre-sorts need so comparison is O(1)",
+        "It tracks a single integer 'formed' = number of unique characters in p whose frequency is currently satisfied in window. Validity check: formed == required (O(1)). Update formed only when a count exactly reaches or drops below need — O(1) per character event, not O(|alphabet|) per step.",
+        "It uses binary search on the sorted Counter keys",
+        "It caches the previous comparison result"
+      ],
+      "answer": 1,
+      "explanation": "The formed approach (used in LC 76) replaces 'window == need' with 'formed == required'. formed is maintained incrementally: +1 when have[char] first reaches need[char], -1 when it drops below. Each step: O(1) update to formed, O(1) comparison. This trades the O(|alphabet|)=O(26) per-step comparison for O(1) — meaningful only if the alphabet is large. For 26 lowercase letters, both are effectively O(1), making the simpler Counter == approach preferable here."
+    },
+    {
+      "id": 16,
+      "question": "s='aaaaaaaaaa' (10 a's), p='aaaa' (4 a's). How many anagram windows exist?",
+      "options": [
+        "1 — only one window of 4 a's",
+        "7 — windows starting at indices 0 through 6",
+        "10 — every starting index",
+        "4 — len(p) windows"
+      ],
+      "answer": 1,
+      "explanation": "need=Counter({'a':4}), len_p=4. Every window of size 4 in a 10-character all-'a' string has exactly 4 'a's = need. Number of windows of size 4 in length-10 string = 10 - 4 + 1 = 7. Starting indices: 0,1,2,3,4,5,6. Result=[0,1,2,3,4,5,6]."
+    },
+    {
+      "id": 17,
+      "question": "What is the relationship between this problem and Group Anagrams (LC 49)?",
+      "options": [
+        "They are identical — just different output formats",
+        "Both use the concept of anagram = same character frequencies. LC 49 groups entire strings by their sorted form (or Counter tuple as key). LC 438 uses a sliding window to find substrings that are anagrams of p. The anagram detection method is the same (frequency matching) but the application — grouping vs sliding window — differs completely.",
+        "LC 49 requires sorting; LC 438 uses Counter",
+        "Group Anagrams is a special case of this problem with p = '' "
+      ],
+      "answer": 1,
+      "explanation": "Both problems identify anagrams by their character frequency signatures. LC 49 uses sorted(word) or tuple(sorted(word)) as a hash key to group strings. LC 438 uses Counter equality to check if a sliding window matches p's frequencies. The fundamental idea — anagrams have equal frequency maps — is shared. The algorithmic context (grouping strings vs substring search) is different."
+    },
+    {
+      "id": 18,
+      "question": "What happens at right=0 when len(p) == 1?",
+      "options": [
+        "The while loop triggers immediately and left jumps to 1",
+        "right=0: add s[0] to window. size=1, not > len(p)=1. Check window==need. If s[0]==p[0], result=[0]. This is correct — the first character is a valid anagram of a single-character p.",
+        "An IndexError because the window is too small",
+        "result is never populated for len(p)==1"
+      ],
+      "answer": 1,
+      "explanation": "For len(p)=1: need=Counter({p[0]:1}). At right=0: window={s[0]:1}. Size=1, not >1 (not > len(p)=1). Check: window==need? Only if s[0]==p[0]. If yes, result=[0]. The algorithm handles all window sizes correctly, including the minimum window of size 1."
+    },
+    {
+      "id": 19,
+      "question": "Why is the early exit 'if len(s) < len(p): return []' included?",
+      "options": [
+        "Without it, Counter would raise a ValueError",
+        "Without it, the for loop still runs but the window never reaches size len(p), so window != need is always True and result stays []. The early return is an optimization — it avoids any iteration at all when it is impossible for an anagram to exist. It also makes the code's intent clearer.",
+        "Without it, the slice s[left:right+1] goes out of bounds",
+        "Without it, len(p) - right would become negative"
+      ],
+      "answer": 1,
+      "explanation": "If len(s) < len(p), there is no window of size len(p) in s — no anagram can exist. The algorithm would run correctly without the guard (zero matches found, return []). The early return is a defensive optimization: O(1) check saves O(m) iteration work. It also communicates intent: 'if this condition is trivially impossible, exit immediately'."
+    },
+    {
+      "id": 20,
+      "question": "s='baa', p='aa'. Trace to find where the anagram window starts.",
+      "options": [
+        "result=[0] — 'ba' is treated as anagram of 'aa'",
+        "result=[1] — s[1:3]='aa' is the only window matching Counter({'a':2})",
+        "result=[0,1] — two windows found",
+        "result=[] — no anagram found"
+      ],
+      "answer": 1,
+      "explanation": "need=Counter({'a':2}), len_p=2. right=0 'b': window={'b':1}, size=1. window!=need. right=1 'a': window={'b':1,'a':1}, size=2. window={'b':1,'a':1}!=need={'a':2}. right=2 'a': window={'b':1,'a':2}, size=3>2: remove s[0]='b', window['b']-=1=0, del window['b'], left=1. window={'a':2}==need={'a':2}: result=[1]. Return [1]."
+    },
+    {
+      "id": 21,
+      "question": "Why is 'del window[s[left]]' used instead of just leaving window[s[left]] = 0?",
+      "options": [
+        "del is faster than setting to 0",
+        "Counter({'a':1,'b':0}) != Counter({'a':1}). Leaving zero entries causes the equality check to fail even for valid anagram windows. Deleting zero-count keys keeps window compact and ensures == gives correct results.",
+        "Python raises a ZeroDivisionError for dict values of 0",
+        "Leaving 0 entries causes the while loop to run extra times"
+      ],
+      "answer": 1,
+      "explanation": "Python dict/Counter equality checks ALL key-value pairs including zero-value keys. Counter({'a':1,'b':0}) has key 'b' with value 0 — it is NOT equal to Counter({'a':1}) which has no 'b' key. This is the most common bug in this problem. del window[key] when the count reaches 0 ensures window only contains non-zero entries, making == comparison accurate."
+    },
+    {
+      "id": 22,
+      "question": "Could you solve this problem without a Counter, using a fixed-size array instead? What would change?",
+      "options": [
+        "No — arrays cannot represent character frequencies",
+        "Yes. Use two arrays of size 26 (one for need, one for window). Update by converting chars to indices: ord(char) - ord('a'). Array equality check is O(26) = O(1). Avoids Counter overhead. Space: O(1). Time: O(m + n). Slightly faster in practice due to no hash overhead.",
+        "Yes but only if p has exactly 26 unique characters",
+        "Arrays would give O(m * 26) = O(m) per step"
+      ],
+      "answer": 1,
+      "explanation": "Since s and p are lowercase English letters (26 chars), a fixed array of size 26 works as a frequency map. need[ord(c)-ord('a')] and window[ord(c)-ord('a')]. Array == comparison: check all 26 positions. O(26)=O(1). This is the O(1) space constant-factor optimization — same algorithm, lower overhead. Common in C++/Java implementations; Counter is more Pythonic."
+    },
+    {
+      "id": 23,
+      "question": "p='abc', s='cbaebabacd'. After right=3 ('e'), what are left, window, and formed state?",
+      "options": [
+        "left=0, window={'c':1,'b':1,'a':1,'e':1} — no shrink happened",
+        "left=1, window={'b':1,'a':1,'e':1} — 'c' was removed when size exceeded 3",
+        "left=1, window={'b':1,'e':1} — 'a' and 'c' both removed",
+        "left=0, window={'e':1} — window reset on non-matching char"
+      ],
+      "answer": 1,
+      "explanation": "right=3 'e': first add 'e' -> window={'c':1,'b':1,'a':1,'e':1}, size=4>3. Shrink: remove s[0]='c', window['c']-=1=0, del window['c'], left=1. window={'b':1,'a':1,'e':1}, size=3. Check: window!=need (has 'e', missing 'c'). State: left=1, window={'b':1,'a':1,'e':1}."
+    },
+    {
+      "id": 24,
+      "question": "What is the maximum number of anagram indices that can be in the result for s of length m and p of length n?",
+      "options": [
+        "Exactly n",
+        "At most m - n + 1 — the number of windows of size n in a string of length m. This is the upper bound. All windows could theoretically be anagrams (e.g., s='aaaa', p='aa' gives m-n+1=3 results).",
+        "At most m",
+        "Exactly m * n"
+      ],
+      "answer": 1,
+      "explanation": "The number of substrings of length n in a string of length m is m - n + 1 (starting indices 0 through m-n). Every single window could be an anagram in the best case (e.g., all same characters). So the result list has at most m - n + 1 entries. The result list size is O(m) in the worst case."
+    },
+    {
+      "id": 25,
+      "question": "An interviewer asks: 'What is the key difference between this fixed-window approach and the variable-window approach in LC 76?' What is the ideal answer?",
+      "options": [
+        "Fixed window is always better — O(1) validity check vs O(n) for variable",
+        "LC 438 (fixed): window size is always len(p). Slide one step at a time — add right, remove left simultaneously. Validity check: window == need (O(|alphabet|)). LC 76 (variable): expand until all t chars covered, then shrink to minimum. Needs formed/required counter for O(1) validity. Fixed window is simpler when the target size is known. Variable window is needed when we want minimum/maximum length satisfying a condition.",
+        "They are the same algorithm — only the output type differs",
+        "LC 76 is always harder — never use variable window when fixed works"
+      ],
+      "answer": 1,
+      "explanation": "The fixed vs variable distinction is fundamental. Fixed: you always know the window size (len(p)). Slide mechanically — add right, remove left. Check validity once per step. Variable: you don't know the optimal window size upfront. Expand until valid, shrink to minimize. Requires a validity counter (formed) to avoid O(|t|) per-step check. Recognizing which type a problem needs is the key sliding window skill."
+    }
+  ]
+}
