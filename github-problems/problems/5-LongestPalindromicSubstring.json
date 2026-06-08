@@ -1,0 +1,445 @@
+{
+  "id": "5",
+  "title": "Longest Palindromic Substring",
+  "difficulty": "Medium",
+  "tags": ["String", "Dynamic Programming", "Two Pointers", "Expand Around Center"],
+  "description": "Given a string s, return the longest palindromic substring in s.",
+  "examples": [
+    {
+      "input": "s = \"babad\"",
+      "output": "\"bab\" or \"aba\"",
+      "explanation": "Both 'bab' and 'aba' are valid answers of length 3."
+    },
+    {
+      "input": "s = \"cbbd\"",
+      "output": "\"bb\"",
+      "explanation": "The longest palindromic substring is 'bb' with length 2."
+    },
+    {
+      "input": "s = \"a\"",
+      "output": "\"a\"",
+      "explanation": "Single character is a palindrome."
+    },
+    {
+      "input": "s = \"ac\"",
+      "output": "\"a\" or \"c\"",
+      "explanation": "No two-character palindrome. Either single character is valid."
+    },
+    {
+      "input": "s = \"racecar\"",
+      "output": "\"racecar\"",
+      "explanation": "The entire string is a palindrome."
+    }
+  ],
+  "constraints": [
+    "1 <= s.length <= 1000",
+    "s consists of only digits and English letters"
+  ],
+  "intuition": "Every palindrome has a center. For odd-length palindromes the center is a single character. For even-length palindromes the center is between two equal characters. The expand-around-center approach exploits this: for each possible center (n centers for odd, n-1 centers for even, total 2n-1), expand outward as long as characters on both sides match. The longest expansion from any center is the answer. This is O(n^2) time but O(1) space — no extra array needed. The key insight is that you never need to 'check' whether a substring is a palindrome from scratch — you grow it character by character, stopping the moment it fails.",
+  "palindrome_types": {
+    "odd_length": "Center is a single character. Call helper(i, i, s). Expands from one character outward symmetrically.",
+    "even_length": "Center is between two characters. Call helper(i, i+1, s). Starts by checking if s[i]==s[i+1], then expands outward."
+  },
+  "helper_explanation": {
+    "signature": "helper(left, right, s)",
+    "how_it_works": "Starts with a center defined by (left, right). While both pointers are in bounds AND s[left]==s[right], expand: left--, right++. When the loop exits (either out of bounds or mismatch), the palindrome is s[left+1 : right]. The +1 and no +1 on right are because after the last valid expansion, left was decremented one too far and right was incremented one too far.",
+    "return_slice": "s[left+1 : right] — left+1 corrects the over-decrement, right is already exclusive in Python slicing so no adjustment needed."
+  },
+  "why_two_calls_per_center": "For each index i, we make two calls: helper(i,i,s) for odd-length palindromes centered at i, and helper(i,i+1,s) for even-length palindromes centered between i and i+1. Without both calls, even-length palindromes like 'abba' would be missed entirely (no single character center).",
+  "return_slice_derivation": "After the while loop exits, left and right point one step BEYOND the last valid palindrome boundary. The last valid palindrome was s[left+1 .. right-1]. In Python, s[left+1 : right] correctly captures this because Python slice end is exclusive — s[a:b] = s[a], s[a+1], ..., s[b-1].",
+  "solutions": {
+    "approach_1_expand_center": {
+      "name": "Expand Around Center (your solution)",
+      "time": "O(n^2)",
+      "space": "O(1)",
+      "description": "For each of the 2n-1 possible centers, expand outward. Track the longest palindrome found. Two cases per index: odd-length (single center) and even-length (pair center).",
+      "code": "class Solution:\n    def longestPalindrome(self, s: str) -> str:\n        def helper(left, right, s):\n            while left >= 0 and right < len(s):\n                if s[left] == s[right]:\n                    left -= 1\n                    right += 1\n                else:\n                    break\n            # left went one too far left, right went one too far right\n            # palindrome is s[left+1 : right]\n            return s[left+1: right]\n\n        result = \"\"\n        for i in range(len(s)):\n            c1 = helper(i, i, s)       # odd-length: center at i\n            c2 = helper(i, i+1, s)     # even-length: center between i and i+1\n            candidate = c1 if len(c1) > len(c2) else c2\n            if len(candidate) >= len(result):\n                result = candidate\n        return result\n        # Time: O(n^2) | Space: O(1)"
+    },
+    "approach_2_brute_force": {
+      "name": "Brute Force",
+      "time": "O(n^3)",
+      "space": "O(1)",
+      "description": "Check every possible substring (O(n^2) pairs) and verify each is a palindrome (O(n)). Three nested loops total. Correct but too slow for n=1000.",
+      "code": "def longestPalindrome(s):\n    n = len(s)\n    best = s[0]  # single char is always a palindrome\n    for i in range(n):\n        for j in range(i+1, n):\n            sub = s[i:j+1]\n            if sub == sub[::-1] and len(sub) > len(best):\n                best = sub\n    return best\n    # Time: O(n^3) | Space: O(n) for the substring slice"
+    },
+    "approach_3_dp": {
+      "name": "Dynamic Programming",
+      "time": "O(n^2)",
+      "space": "O(n^2)",
+      "description": "Build a 2D table dp[i][j] = True if s[i..j] is a palindrome. Base cases: all single chars (dp[i][i]=True), pairs (dp[i][i+1] = s[i]==s[i+1]). Transition: dp[i][j] = (s[i]==s[j]) and dp[i+1][j-1]. Fill by increasing substring length.",
+      "recurrence": "dp[i][j] = True if s[i] == s[j] AND dp[i+1][j-1] == True (for length >= 3)",
+      "code": "def longestPalindrome(s):\n    n = len(s)\n    dp = [[False] * n for _ in range(n)]\n    start, max_len = 0, 1\n\n    # base case: every single character is a palindrome\n    for i in range(n):\n        dp[i][i] = True\n\n    # base case: check all pairs\n    for i in range(n-1):\n        if s[i] == s[i+1]:\n            dp[i][i+1] = True\n            start, max_len = i, 2\n\n    # fill by increasing length (length 3 to n)\n    for length in range(3, n+1):\n        for i in range(n - length + 1):\n            j = i + length - 1\n            if s[i] == s[j] and dp[i+1][j-1]:\n                dp[i][j] = True\n                if length > max_len:\n                    start, max_len = i, length\n\n    return s[start : start + max_len]\n    # Time: O(n^2) | Space: O(n^2)"
+    },
+    "approach_4_manachers": {
+      "name": "Manacher's Algorithm",
+      "time": "O(n)",
+      "space": "O(n)",
+      "description": "The optimal algorithm. Transforms the string by inserting '#' between characters (handling odd/even uniformly). Maintains a right boundary and center of the currently furthest-reaching palindrome. Uses previously computed palindrome radii to skip redundant work. Returns the center and radius of the longest palindrome.",
+      "key_insight": "If we are inside a known palindrome, our mirror position has already been computed. We can initialize our radius from the mirror instead of starting from 0 — avoiding redundant comparisons.",
+      "code": "def longestPalindrome(s):\n    # transform: 'abc' -> '#a#b#c#'\n    t = '#' + '#'.join(s) + '#'\n    n = len(t)\n    p = [0] * n  # p[i] = palindrome radius at i in transformed string\n    center = right = 0\n    best_center = best_radius = 0\n\n    for i in range(n):\n        # mirror of i with respect to current center\n        mirror = 2 * center - i\n\n        if i < right:\n            # initialize from mirror, but don't exceed right boundary\n            p[i] = min(right - i, p[mirror])\n\n        # try to expand beyond known boundary\n        while (i + p[i] + 1 < n and\n               i - p[i] - 1 >= 0 and\n               t[i + p[i] + 1] == t[i - p[i] - 1]):\n            p[i] += 1\n\n        # update center and right boundary\n        if i + p[i] > right:\n            center = i\n            right = i + p[i]\n\n        # track best palindrome\n        if p[i] > best_radius:\n            best_radius = p[i]\n            best_center = i\n\n    # extract from transformed string back to original\n    start = (best_center - best_radius) // 2\n    return s[start : start + best_radius]\n    # Time: O(n) | Space: O(n)"
+    }
+  },
+  "comparison_table": {
+    "columns": ["Approach", "Time", "Space", "Notes"],
+    "rows": [
+      ["Brute Force", "O(n^3)", "O(1) or O(n)", "Easy to understand, too slow for n=1000"],
+      ["Dynamic Programming", "O(n^2)", "O(n^2)", "Classic DP, clear recurrence, high memory"],
+      ["Expand Around Center", "O(n^2)", "O(1)", "Best practical choice, simple code, optimal space"],
+      ["Manacher's Algorithm", "O(n)", "O(n)", "Theoretically optimal, complex to implement, rarely needed in interviews"]
+    ]
+  },
+  "dp_recurrence_explained": {
+    "base_single": "dp[i][i] = True for all i — every single character is trivially a palindrome.",
+    "base_pair": "dp[i][i+1] = (s[i] == s[i+1]) — a two-character string is a palindrome iff both characters are equal.",
+    "transition": "dp[i][j] = (s[i] == s[j]) AND dp[i+1][j-1] — outer characters must match AND the inner substring must already be a palindrome.",
+    "why_fill_by_length": "dp[i][j] depends on dp[i+1][j-1] which is a strictly smaller substring. Filling by increasing length ensures the inner result is always computed before the outer."
+  },
+  "manachers_transform_explained": {
+    "why_insert_hash": "Inserting '#' between every character converts all palindromes to odd-length in the transformed string. 'abba' (even, length 4) becomes '#a#b#b#a#' (odd, length 9). This lets us use a single formula for both odd and even palindromes.",
+    "radius_meaning": "p[i] is the radius of the palindrome centered at i in the transformed string. The actual palindrome length in the original string is p[i] (the '#' characters don't contribute to original length).",
+    "extract_back": "If best center in transformed string is best_center with radius best_radius: start in original = (best_center - best_radius) // 2. Length = best_radius."
+  },
+  "full_trace": {
+    "input": "\"babad\"",
+    "steps": [
+      "i=0 'b': c1=helper(0,0)='b'(len1), c2=helper(0,1): s[0]='b'!=s[1]='a' -> returns ''(len0). candidate='b'. result='b'.",
+      "i=1 'a': c1=helper(1,1): expand left=0,right=2 s[0]='b'==s[2]='b'->left=-1,right=3. s[-1] OOB. return s[0:3]='bab'(len3). c2=helper(1,2): s[1]='a'!=s[2]='b'->returns ''(len0). candidate='bab'. result='bab'.",
+      "i=2 'b': c1=helper(2,2): expand left=1,right=3 s[1]='a'==s[3]='a'->left=0,right=4. s[0]='b'==s[4]='d'? No. return s[1:4]='aba'(len3). c2=helper(2,3): s[2]='b'!=s[3]='a'->returns ''(len0). candidate='aba'(len3). len(3)>=len('bab'=3) so result='aba'.",
+      "i=3 'd': c1=helper(3,3): expand left=2,right=4 s[2]='b'!=s[4]='d'->return s[3:4]='d'(len1). c2=helper(3,4): right=4 out of bounds immediately ->return s[4:4]=''(len0). candidate='d'. result stays 'aba'.",
+      "i=4 'd': c1=helper(4,4): left=3 s[3]='a'!=s[5] OOB -> return s[4:5]='d'(len1). c2=helper(4,5): right=5 OOB -> return ''(len0). candidate='d'. result stays 'aba'.",
+      "Return 'aba'."
+    ]
+  },
+  "python_gotchas": [
+    "The helper returns s[left+1 : right] — not s[left : right] and not s[left+1 : right+1]. After the loop, left is one position before the palindrome's start and right is one position after its end. left+1 corrects the over-decrement; right is already the exclusive Python slice end.",
+    "helper(i, i+1, s) for even palindromes: if s[i] != s[i+1] the while condition fails immediately (s[left] != s[right]) and the function returns s[i+1:i+1] = '' (empty string). This correctly contributes length 0 for non-matching pairs.",
+    "The candidate comparison uses >= not > for 'if len(candidate) >= len(result)'. Using > would skip same-length palindromes found later — still correct but may return a different valid answer. >= ensures the last equally long palindrome is chosen.",
+    "Python string slicing never throws IndexError — s[left+1:right] where left+1 > right returns ''. This is how helper handles the case where no palindrome expansion happens.",
+    "For the DP approach, the inner loop must go over increasing length FIRST, then starting index. If you loop over i and j naively without respecting length order, dp[i+1][j-1] may not be computed yet when dp[i][j] is being filled.",
+    "s[::-1] is O(n) and creates a new string — checking sub == sub[::-1] in the brute force is O(n) per check, making the full brute force O(n^3) not O(n^2)."
+  ],
+  "related_problems": [
+    {
+      "title": "Palindromic Substrings (LC 647)",
+      "relation": "Count all palindromic substrings instead of finding the longest one. Uses the exact same expand-around-center approach — instead of tracking the longest, increment a counter for each successful expansion step."
+    },
+    {
+      "title": "Palindrome Partitioning (LC 131)",
+      "relation": "Partition the string into all substrings that are palindromes. Uses DP palindrome checking (same dp[i][j] table) as preprocessing, then DFS/backtracking to enumerate partitions."
+    },
+    {
+      "title": "Shortest Palindrome (LC 214)",
+      "relation": "Find the shortest palindrome by adding characters to the front. Requires finding the longest palindromic prefix — solved with KMP or Manacher's."
+    },
+    {
+      "title": "Valid Palindrome (LC 125)",
+      "relation": "Check if a string is a palindrome after filtering non-alphanumeric characters. Uses two-pointer converging from both ends — the reverse of expand-around-center."
+    },
+    {
+      "title": "Palindrome Pairs (LC 336)",
+      "relation": "Given a list of words, find all pairs that form a palindrome when concatenated. Much harder — uses trie or hash map with palindrome suffix/prefix checks."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "Why does the helper function return s[left+1 : right] instead of s[left : right+1]?",
+      "options": [
+        "Python slicing is exclusive on the left side",
+        "After the while loop exits, left has been decremented one step past the valid start and right has been incremented one step past the valid end. The true palindrome is s[left+1 .. right-1]. In Python s[left+1 : right] correctly captures this because slice end is exclusive.",
+        "left+1 skips the center character which should not be included",
+        "The +1 handles the even-length palindrome case specifically"
+      ],
+      "answer": 1,
+      "explanation": "The while loop's last successful expansion decrements left and increments right. Then the failing condition is checked — but left and right are already at their over-extended values. So the valid palindrome boundaries are left+1 (correct the over-decrement) and right-1 (correct the over-increment). Python slice s[a:b] gives s[a..b-1], so s[left+1 : right] = s[left+1 .. right-1]. Correct."
+    },
+    {
+      "id": 2,
+      "question": "Why are two helper calls made per index (helper(i,i,s) and helper(i,i+1,s))?",
+      "options": [
+        "One call handles left expansion, the other handles right expansion",
+        "helper(i,i,s) finds odd-length palindromes centered at a single character. helper(i,i+1,s) finds even-length palindromes centered between two characters. Without both, even-length palindromes like 'abba' or 'bb' would be completely missed.",
+        "The second call is a backup in case the first call returns empty",
+        "One call checks forward, the other checks backward"
+      ],
+      "answer": 1,
+      "explanation": "Odd palindromes (aba, racecar) have a single character center — start both pointers at i. Even palindromes (abba, bb) have their center between two characters — start left at i and right at i+1. If s[i] == s[i+1], expansion begins. If not, the function returns '' immediately. Both types are covered by these two calls at every index."
+    },
+    {
+      "id": 3,
+      "question": "What does helper(i, i+1, s) return when s[i] != s[i+1]?",
+      "options": [
+        "s[i] alone — falls back to single character",
+        "None — the function has no return for failed cases",
+        "'' (empty string) — the while condition s[left]==s[right] fails immediately, loop body never runs, returns s[i+1:i+1] which is ''",
+        "Raises an IndexError since i+1 might be out of bounds"
+      ],
+      "answer": 2,
+      "explanation": "The while loop checks s[left] == s[right] first. If s[i] != s[i+1], the loop body never executes. left remains i and right remains i+1. Return s[left+1 : right] = s[i+1 : i+1] = '' (empty string). Python slices where start==end return ''. This correctly contributes length 0 to the candidate comparison."
+    },
+    {
+      "id": 4,
+      "question": "What is the time complexity of the expand-around-center approach and why?",
+      "options": [
+        "O(n) — each character is visited once",
+        "O(n^2) — for each of the O(n) centers, expansion takes O(n) time in the worst case. Total: O(n) * O(n) = O(n^2).",
+        "O(n^3) — three nested loops in the helper",
+        "O(n log n) — binary search is used to find palindrome boundaries"
+      ],
+      "answer": 1,
+      "explanation": "There are 2n-1 possible centers (n single-character + n-1 between-character). For each center, expansion takes O(n) worst case (full string is a palindrome). Total: O(n) centers * O(n) expansion = O(n^2). In practice much faster — most centers expand only a few steps."
+    },
+    {
+      "id": 5,
+      "question": "What is the DP recurrence for dp[i][j] and what do the base cases handle?",
+      "options": [
+        "dp[i][j] = dp[i+1][j] OR dp[i][j-1] — take either half",
+        "dp[i][j] = (s[i] == s[j]) AND dp[i+1][j-1]. Base cases: dp[i][i] = True (single chars) and dp[i][i+1] = (s[i]==s[i+1]) (pairs). dp[i+1][j-1] for a length-2 substring would be dp[i+1][i] which is a length-0 or negative range — treated as True.",
+        "dp[i][j] = dp[i-1][j] AND dp[i][j+1]",
+        "dp[i][j] = (s[i] == s[j]) only — inner check is implicit"
+      ],
+      "answer": 1,
+      "explanation": "A substring s[i..j] is a palindrome if its outer characters match (s[i]==s[j]) AND the inner substring s[i+1..j-1] is also a palindrome (dp[i+1][j-1]). For length 1 (i==j): trivially true. For length 2 (j==i+1): true iff s[i]==s[j]. For length >= 3: the recurrence applies. Note: for j = i+2 (length 3), dp[i+1][i+1] is the base case — a single character, always True."
+    },
+    {
+      "id": 6,
+      "question": "Why must the DP table be filled by increasing substring LENGTH rather than iterating i and j directly?",
+      "options": [
+        "Longer substrings are more likely to be palindromes",
+        "dp[i][j] depends on dp[i+1][j-1] — a strictly shorter substring. If you iterate by i and then j without respecting length order, dp[i+1][j-1] might not be computed yet when you compute dp[i][j], giving wrong results.",
+        "Iterating by length is faster than iterating by index pairs",
+        "Python 2D arrays must be filled in row-major order"
+      ],
+      "answer": 1,
+      "explanation": "Topological dependency: dp[i][j] requires dp[i+1][j-1] which has length j-i-1 = (j-i+1)-2. So a palindrome of length L depends on a palindrome of length L-2. Fill order must ensure smaller lengths are computed first. Iterating 'for length in range(1, n+1)' guarantees this. Iterating by i then j (row-major) would compute dp[0][3] before dp[1][2] — incorrect."
+    },
+    {
+      "id": 7,
+      "question": "What is the space complexity of the DP approach and can it be optimized?",
+      "options": [
+        "O(n) — only one row of the table is needed at a time",
+        "O(n^2) as written — the full n x n table is stored. It can be partially optimized but not easily to O(1) because dp[i][j] needs dp[i+1][j-1] which is a diagonal dependency, making row-by-row elimination tricky.",
+        "O(1) — the dp table is computed in place on the string",
+        "O(n^2) and cannot be reduced at all"
+      ],
+      "answer": 1,
+      "explanation": "The full dp table is O(n^2). Unlike some DP problems where you only need the previous row, here dp[i][j] depends on dp[i+1][j-1] which is a diagonal element. This makes simple 1D rolling optimization non-trivial. Some implementations use two 1D arrays but the code complexity increases significantly. For n=1000, O(n^2) = 10^6 booleans — manageable. The expand-around-center approach avoids this entirely."
+    },
+    {
+      "id": 8,
+      "question": "What transformation does Manacher's algorithm apply and why?",
+      "options": [
+        "Reverses the string to detect palindromes from both ends",
+        "Inserts a '#' separator between every character (and at the ends): 'abc' -> '#a#b#c#'. This converts all palindromes to odd-length in the transformed string, allowing a single unified formula for both odd and even original palindromes.",
+        "Converts all characters to lowercase for case-insensitive comparison",
+        "Removes duplicate characters to speed up palindrome detection"
+      ],
+      "answer": 1,
+      "explanation": "'abba' (even length 4) becomes '#a#b#b#a#' (odd length 9, center '#' between two b's). 'aba' (odd length 3) becomes '#a#b#a#' (odd length 7, center 'b'). The '#' characters never match each other for actual character comparisons but ensure all palindromes are odd in the transformed string. This eliminates the odd/even case split that requires two helper calls in expand-around-center."
+    },
+    {
+      "id": 9,
+      "question": "What is the key optimization in Manacher's algorithm that achieves O(n)?",
+      "options": [
+        "It uses binary search to find palindrome boundaries",
+        "It maintains the rightmost palindrome boundary seen so far. For any center i inside that boundary, its mirror position has already been computed. p[i] can be initialized from p[mirror] instead of 0 — skipping redundant character comparisons. Each character is 'compared' at most twice total across all expansions.",
+        "It uses divide and conquer to split the string in half",
+        "It precomputes a hash of every substring for O(1) palindrome checks"
+      ],
+      "answer": 1,
+      "explanation": "The key: if center i is within the current rightmost palindrome [center-right, right], then i's mirror (2*center - i) has already been fully computed. p[i] = min(right - i, p[mirror]) initializes p[i] without re-examining those characters. Expansion then tries to go beyond the known boundary. Total expansions across all centers = O(n) (each position enters the expansion loop at most twice). This amortized argument gives O(n)."
+    },
+    {
+      "id": 10,
+      "question": "For s = \"cbbd\", trace helper(1, 2, s) (the even-length call at i=1).",
+      "options": [
+        "Returns 'cbbd' — the full string",
+        "Returns 'bb' — s[1]='b'==s[2]='b', expand: left=0,right=3. s[0]='c'!=s[3]='d', stop. Return s[1:3]='bb'.",
+        "Returns '' — 'b'!='b' is False so loop never runs",
+        "Returns 'b' — single character only"
+      ],
+      "answer": 1,
+      "explanation": "helper(1, 2, s): left=1, right=2. s[1]='b'==s[2]='b' -> left=0, right=3. s[0]='c' vs s[3]='d': not equal -> break. Return s[left+1:right] = s[1:3] = 'bb'. Length 2. This is the correct answer for 'cbbd'."
+    },
+    {
+      "id": 11,
+      "question": "For s = \"racecar\", which index i and which call (odd/even) finds the full palindrome?",
+      "options": [
+        "i=3, even-length call helper(3,4,s)",
+        "i=3, odd-length call helper(3,3,s) — center character 'e' at index 3, expansion reaches the full string",
+        "i=0, even-length call stretches to the end",
+        "i=6, odd-length call going backwards"
+      ],
+      "answer": 1,
+      "explanation": "s = 'racecar', center is 'e' at index 3. helper(3,3,s): left=3,right=3. s[3]='e'==s[3]='e' -> left=2,right=4. s[2]='c'==s[4]='c' -> left=1,right=5. s[1]='a'==s[5]='a' -> left=0,right=6. s[0]='r'==s[6]='r' -> left=-1,right=7. Bounds fail. Return s[0:7]='racecar'. Length 7."
+    },
+    {
+      "id": 12,
+      "question": "The candidate comparison uses '>=' (if len(candidate) >= len(result)). What changes if you use '>'?",
+      "options": [
+        "The algorithm becomes incorrect",
+        "With '>=', same-length candidates found later overwrite earlier ones — the returned palindrome may differ but is still a valid answer. With '>', the first longest palindrome found is kept. Both are correct per problem statement (any valid answer accepted), but the choice affects WHICH valid answer is returned.",
+        "'>=' is required to handle the empty string edge case",
+        "Using '>' causes an IndexError on single-character strings"
+      ],
+      "answer": 1,
+      "explanation": "For s='babad': 'bab' is found at i=1, 'aba' at i=2. With '>=': result='aba' (later same-length palindrome). With '>': result='bab' (first longest). LeetCode accepts both. The choice is a tie-breaking policy, not a correctness issue."
+    },
+    {
+      "id": 13,
+      "question": "How does the brute force approach verify if a substring is a palindrome, and what makes it O(n^3)?",
+      "options": [
+        "It uses a recursive call which adds one more O(n) factor",
+        "It checks sub == sub[::-1] — reversing the substring is O(n) and creates a new string. Combined with O(n^2) substrings to check, total is O(n) * O(n^2) = O(n^3).",
+        "The brute force is only O(n^2) — two nested loops",
+        "Reversing a string in Python is O(1) using built-in optimization"
+      ],
+      "answer": 1,
+      "explanation": "Two nested loops generate O(n^2) substrings. For each, sub == sub[::-1] reverses the substring — O(n) time and O(n) space for the reversed copy. O(n^2) substrings * O(n) per check = O(n^3). The expand-around-center avoids this by never generating substrings explicitly — it just moves pointers."
+    },
+    {
+      "id": 14,
+      "question": "What is the relationship between Longest Palindromic Substring (LC 5) and Palindromic Substrings (LC 647)?",
+      "options": [
+        "LC 647 is strictly harder and requires Manacher's algorithm",
+        "Both use the same expand-around-center structure. LC 5 tracks the maximum-length palindrome found. LC 647 counts every palindromic expansion — each successful left--,right++ step in the while loop counts one additional palindromic substring. The helper logic is identical; only the aggregation differs.",
+        "LC 647 uses DP while LC 5 uses expand-around-center",
+        "They are the same problem with different output types"
+      ],
+      "answer": 1,
+      "explanation": "Same structure, different tracking. LC 5: max_len = max(max_len, current_palindrome_length). LC 647: count += 1 for each step of expansion (each step uncovers a new palindromic substring). The helper loop body can directly increment count instead of expanding to find the full substring."
+    },
+    {
+      "id": 15,
+      "question": "For s = \"aaaa\", trace the algorithm. How many palindromes of length 4 are found?",
+      "options": [
+        "1 — the full string 'aaaa' is found at i=0",
+        "0 — only odd-length palindromes are found",
+        "The full string 'aaaa' (even-length) is found at i=1 via helper(1,2,s): s[1]='a'==s[2]='a' -> expand to s[0]='a'==s[3]='a' -> expand, OOB. Return s[0:4]='aaaa'. max_len=4.",
+        "2 — found at both i=1 and i=2"
+      ],
+      "answer": 2,
+      "explanation": "i=1, c2=helper(1,2): left=1,right=2. s[1]=='a'==s[2] -> left=0,right=3. s[0]=='a'==s[3] -> left=-1,right=4. OOB. Return s[0:4]='aaaa'. Also i=1 c1=helper(1,1): 'aaa' (length 3). And i=2 c2=helper(2,3): also 'aaaa'. The >= in the comparison means the last found 'aaaa' is kept. All are valid."
+    },
+    {
+      "id": 16,
+      "question": "In the DP approach, what is dp[2][2] for s = \"babad\"?",
+      "options": [
+        "False — s[2]='b' is part of a larger palindrome",
+        "True — every single character is a palindrome. dp[i][i] = True for all i.",
+        "Depends on the surrounding characters",
+        "Undefined — the DP only fills upper-triangular cells"
+      ],
+      "answer": 1,
+      "explanation": "dp[i][i] = True for all i is a base case — every single character is trivially a palindrome (it reads the same forward and backward). This is set unconditionally for all indices before checking pairs or longer substrings. dp[2][2] = True regardless of what s[2] is."
+    },
+    {
+      "id": 17,
+      "question": "What happens when helper(i, i+1, s) is called with i = len(s)-1 (last index)?",
+      "options": [
+        "An IndexError is raised because i+1 is out of bounds",
+        "The while condition checks 'right < len(s)' first. right = i+1 = len(s), which is NOT < len(s). The loop never runs. Return s[i+1:i+1] = '' (empty). Safe — Python slice indices can be out of bounds without error.",
+        "It returns s[len(s)-1] — the last character",
+        "It wraps around and compares the last character with the first"
+      ],
+      "answer": 1,
+      "explanation": "The while condition is 'left >= 0 AND right < len(s)'. At i = n-1, right = n. right < n is False immediately. The loop body is skipped. Return s[n:n] = ''. No IndexError — Python's slice indices are clamped gracefully. This is why no boundary check is needed before calling helper(i, i+1, s) even at the last index."
+    },
+    {
+      "id": 18,
+      "question": "Which solution approach is best for a coding interview and why?",
+      "options": [
+        "Manacher's algorithm — O(n) is always better",
+        "Dynamic Programming — interviewers always want DP solutions",
+        "Expand Around Center — O(n^2) time with O(1) space, simple and clean code, easy to explain. Manacher's is O(n) but rarely expected in interviews due to its complexity. DP is O(n^2) time with O(n^2) space — strictly worse than expand-around-center.",
+        "Brute Force — shows complete understanding of the problem"
+      ],
+      "answer": 2,
+      "explanation": "Expand-around-center is the sweet spot: O(n^2) time (same as DP), O(1) space (better than DP's O(n^2)), code is short and intuitive, easy to whiteboard and explain. Manacher's is theoretically optimal but complex enough that most interviewers don't expect it and implementing it error-free under pressure is risky. Start with expand-around-center and offer to discuss Manacher's as a follow-up."
+    },
+    {
+      "id": 19,
+      "question": "For s = \"ac\", what does the algorithm return?",
+      "options": [
+        "\"ac\" — both characters together form a palindrome",
+        "\"a\" — first character returned since no longer palindrome exists",
+        "\"\" — no palindrome found",
+        "\"c\" — last character"
+      ],
+      "answer": 1,
+      "explanation": "i=0: c1=helper(0,0)='a'(len1). c2=helper(0,1): s[0]='a'!=s[1]='c' -> ''(len0). candidate='a'. result='a'. i=1: c1=helper(1,1)='c'(len1). c2=helper(1,2): right=2 OOB -> ''(len0). candidate='c'. len('c')=1 >= len('a')=1 -> result='c'. Return 'c'. Both 'a' and 'c' are valid answers. LeetCode accepts either."
+    },
+    {
+      "id": 20,
+      "question": "The DP approach fills the table for length 3+ in a specific order. For s = \"aba\", trace dp[0][2].",
+      "options": [
+        "dp[0][2] = False because s[0]='a' != s[2]='a' is false — they do match",
+        "dp[0][2] = True. s[0]='a'==s[2]='a' AND dp[1][1]=True (base case, single 'b'). So dp[0][2]=True.",
+        "dp[0][2] = False because the inner dp[1][1] is not yet computed",
+        "dp[0][2] is never computed — diagonal cells are skipped"
+      ],
+      "answer": 1,
+      "explanation": "For length=3, i=0, j=2: check s[0]='a'==s[2]='a' (yes) AND dp[1][1]. dp[1][1] = True (base case, single character 'b'). Both conditions true -> dp[0][2] = True. This marks 'aba' as a palindrome. start=0, max_len=3. Return s[0:3]='aba'. Correct."
+    },
+    {
+      "id": 21,
+      "question": "Why is the expand-around-center approach O(1) space while DP is O(n^2)?",
+      "options": [
+        "Expand-around-center uses recursion which has O(1) stack depth",
+        "Expand-around-center uses only a few pointer variables and the result string — no table. DP explicitly allocates an n x n boolean table to store all dp[i][j] values. For n=1000, that is 10^6 booleans.",
+        "DP uses O(n^2) because it considers all pairs twice",
+        "They have the same space complexity — O(n^2)"
+      ],
+      "answer": 1,
+      "explanation": "Expand-around-center: variables left, right, result string, c1, c2, candidate — all O(1) or O(output). No table allocated. DP: an explicit n×n 2D list dp = [[False]*n for _ in range(n)]. n=1000 -> 1,000,000 cells. O(n^2). The expand approach achieves the same O(n^2) time without any bookkeeping table."
+    },
+    {
+      "id": 22,
+      "question": "s = \"abacaba\". Which center produces the longest palindrome and what is it?",
+      "options": [
+        "Center at i=1, produces 'aba'",
+        "Center at i=3 ('c'), odd-length call: expands to 'abacaba' (full string, length 7)",
+        "Center at i=3, even-length call produces length 6",
+        "Center at i=0, produces 'a'"
+      ],
+      "answer": 1,
+      "explanation": "s='abacaba', center 'c' at index 3. helper(3,3): s[3]='c'. left=2,right=4: s[2]='a'==s[4]='a'. left=1,right=5: s[1]='b'==s[5]='b'. left=0,right=6: s[0]='a'==s[6]='a'. left=-1,right=7: OOB. Return s[0:7]='abacaba'. Length 7 — the entire string is a palindrome."
+    },
+    {
+      "id": 23,
+      "question": "In Manacher's algorithm, what does p[i] represent and how is the original palindrome length extracted?",
+      "options": [
+        "p[i] = index of the palindrome center in the original string",
+        "p[i] = radius of the palindrome in the transformed string (with '#' separators). The actual palindrome length in the original string equals p[i] (the '#' characters don't count). If best center is at best_center with radius best_radius: original start = (best_center - best_radius) // 2.",
+        "p[i] = number of characters to the left of the palindrome",
+        "p[i] = length of the palindrome in the transformed string"
+      ],
+      "answer": 1,
+      "explanation": "In the transformed string '#a#b#a#', center 'b' is at index 3. p[3] = 3 (radius: extends 3 to the left and right including '#' separators). Actual palindrome: 'aba' has length 3 = p[3]. Original start = (3 - 3) // 2 = 0. s[0 : 0+3] = 'aba'. The formula works because every other position in the transformed string is '#', so half the radius corresponds to original characters."
+    },
+    {
+      "id": 24,
+      "question": "What would happen if you initialized result = s[0] instead of result = '' in the main loop?",
+      "options": [
+        "An IndexError for empty string s",
+        "result = s[0] assumes the answer is at least length 1 (the first character). This is always correct since any single character is a palindrome. The comparison 'if len(candidate) >= len(result)' still works correctly. The problem guarantees len(s) >= 1 so s[0] is safe.",
+        "The algorithm returns a palindrome one character shorter",
+        "This changes the >= to > behavior"
+      ],
+      "answer": 1,
+      "explanation": "result = s[0] initializes with the first character (length 1). result = '' initializes with an empty string (length 0). Both work because the first iteration (i=0) finds at least c1='s[0]' (length 1), which satisfies len(candidate) >= len(result) in either case. result = s[0] is slightly more robust for the single-character input case; result = '' is also correct since the loop handles it."
+    },
+    {
+      "id": 25,
+      "question": "Why is Manacher's algorithm rarely implemented in interviews despite being O(n)?",
+      "options": [
+        "It only works for even-length palindromes",
+        "It requires memorizing a non-intuitive algorithm with several tricky boundary cases: the '#' transformation, the mirror formula, the min(right-i, p[mirror]) initialization, and the center/right update condition. Error-free implementation under time pressure is difficult. Expand-around-center achieves the same result with far simpler code and is almost always sufficient for n <= 1000.",
+        "It has a higher constant factor than O(n^2) expand-around-center",
+        "It is patented and cannot be used commercially"
+      ],
+      "answer": 1,
+      "explanation": "Manacher's has multiple subtleties: the transformation, the mirroring, correctly initializing p[i] from p[mirror] without exceeding the boundary, expanding beyond the boundary, and extracting the original string position from the transformed indices. One mistake in any step gives wrong results. For an interview where n <= 1000 and time is limited, the O(n^2) expand-around-center is the correct practical choice. Mention Manacher's as a follow-up to show awareness."
+    }
+  ]
+}
