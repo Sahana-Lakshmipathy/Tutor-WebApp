@@ -1,0 +1,459 @@
+{
+  "id": "76",
+  "title": "Minimum Window Substring",
+  "difficulty": "Hard",
+  "tags": ["Sliding Window", "Hash Map", "Two Pointers", "String"],
+  "description": "Given two strings s and t of lengths m and n, return the minimum window substring of s such that every character in t (including duplicates) is included in the window. If there is no such substring, return the empty string.",
+  "examples": [
+    {
+      "input": "s = \"ADOBECODEBANC\", t = \"ABC\"",
+      "output": "\"BANC\"",
+      "explanation": "The minimum window containing A, B, C is 'BANC' starting at index 9."
+    },
+    {
+      "input": "s = \"a\", t = \"a\"",
+      "output": "\"a\"",
+      "explanation": "The entire string is the minimum window."
+    },
+    {
+      "input": "s = \"a\", t = \"aa\"",
+      "output": "\"\"",
+      "explanation": "t requires two 'a's but s only has one. No valid window exists."
+    },
+    {
+      "input": "s = \"aa\", t = \"aa\"",
+      "output": "\"aa\"",
+      "explanation": "Need both 'a's. The only valid window is the full string."
+    },
+    {
+      "input": "s = \"ADOBECODEBANC\", t = \"AABC\"",
+      "output": "\"ADOBECODEBA\" or similar",
+      "explanation": "Now t needs two A's. The window must contain both."
+    }
+  ],
+  "constraints": [
+    "m == s.length",
+    "n == t.length",
+    "1 <= m, n <= 10^5",
+    "s and t consist of uppercase and lowercase English letters",
+    "The answer is unique if it exists"
+  ],
+  "intuition": "Expand the right pointer to include characters until the window is valid (contains all characters of t with correct frequencies). Once valid, try to shrink from the left to find the minimum window. Keep shrinking while the window remains valid. When shrinking breaks validity, expand right again. Repeat until right reaches the end. The key insight over simpler sliding window problems: validity is not a single number but a multi-character frequency constraint. Track this with two maps — need (required frequencies from t) and have (current frequencies in window). Use a formed counter to avoid rechecking every character in need on every step: formed == required means all unique characters in t have been satisfied.",
+  "why_formed_counter": "Checking if the window is valid by iterating all keys in need on every step would be O(|t|) per step — making the overall algorithm O(m * |t|). The formed counter reduces this to O(1): increment formed only when a character's frequency in have exactly reaches the frequency in need. Decrement formed when it drops below. formed == required is the O(1) validity check.",
+  "why_two_maps": {
+    "need": "Built from t. need[char] = how many times char must appear in any valid window. Never modified during the sliding window loop.",
+    "have": "Tracks current window character frequencies. Updated as right expands (increment) and left shrinks (decrement). have[char] can exceed need[char] — that is fine and expected."
+  },
+  "formed_counter_detail": {
+    "increment_condition": "formed += 1 only when have[char] == need[char] — the exact moment a character's requirement is fully satisfied. Not when have[char] < need[char] (still undersatisfied) or when have[char] > need[char] (over-satisfied, already counted).",
+    "decrement_condition": "formed -= 1 only when have[lc] < need[lc] after removing lc from the left — the requirement just became unsatisfied. Not when have[lc] >= need[lc] (still satisfied) or when lc is not in need (irrelevant character).",
+    "why_exact_equality": "If formed incremented on any increase (not just reaching need[char]), it could increment multiple times for one character. The exact equality gate ensures formed counts UNIQUE satisfied requirements, matching required = len(need)."
+  },
+  "window_shrink_logic": "The while loop runs while formed == required (window is valid). Inside: record the window length, then try to remove s[left] (the leftmost character). Decrement have[lc], increment left. Check if this breaks validity (formed decreases). The while loop then exits because formed < required, and the outer for loop expands right again. This ping-pong between expand and shrink is the heart of the algorithm.",
+  "substring_extraction": "s[left:right+1] extracts the current window. left is the start (inclusive), right is the current right pointer (inclusive), so right+1 is the exclusive Python slice end. This is done BEFORE left is incremented.",
+  "double_assignment_bug": "The code has 'res = res = s[left:right+1]' — a double assignment. This is harmless (just assigns twice) but is clearly a typo. Should be 'res = s[left:right+1]'.",
+  "approach": {
+    "name": "Sliding window with need/have frequency maps and formed counter",
+    "steps": [
+      "Build need map: frequency of each unique character in t.",
+      "Initialize have = {}, formed = 0, required = len(need), left = 0, min_len = inf, res = ''.",
+      "Expand right: for each character at right in s, add to have map.",
+      "If char is in need AND have[char] just reached need[char]: formed += 1.",
+      "While formed == required (valid window):",
+      "  Record if current window is shorter than min_len. Update res = s[left:right+1].",
+      "  Remove s[left] from have. If s[left] in need AND have[s[left]] drops below need[s[left]]: formed -= 1.",
+      "  Increment left.",
+      "Return res."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "class Solution:\n    def minWindow(self, s: str, t: str) -> str:\n        need = {}\n        for char in t:\n            need[char] = need.get(char, 0) + 1\n        # need = frequency map of t — never changes\n\n        have = {}                         # current window frequency map\n        formed, required = 0, len(need)  # formed = satisfied unique chars; required = unique chars in t\n        left = 0\n        min_len = float('inf')\n        res = ''\n\n        for right, char in enumerate(s):\n            have[char] = have.get(char, 0) + 1\n\n            # check if this char just satisfied its requirement\n            if char in need and have[char] == need[char]:\n                formed += 1\n\n            while formed == required:               # valid window — shrink from left\n                if right - left + 1 < min_len:\n                    min_len = right - left + 1\n                    res = s[left:right+1]           # extract current window\n\n                lc = s[left]                        # leftmost character\n                have[lc] -= 1\n                if lc in need and have[lc] < need[lc]:\n                    formed -= 1                     # requirement just broke\n                left += 1\n\n        return res\n\n        # Time Complexity:  O(m + n) — O(n) to build need, O(m) for the sliding window\n        # Space Complexity: O(|alphabet|) — at most 52 entries in need and have for English letters"
+  },
+  "complexity": {
+    "time": "O(m + n) — O(n) to build need from t. O(m) for the sliding window: right visits each character once (m steps), left visits each character at most once (m total left moves). Total: O(m + n).",
+    "space": "O(|alphabet|) — need and have each store at most |alphabet| entries. For English letters (52 characters), this is O(1) effectively. Not O(m + n) because the maps are bounded by alphabet size."
+  },
+  "full_trace": {
+    "input": "s = \"ADOBECODEBANC\", t = \"ABC\"",
+    "need": "{'A':1, 'B':1, 'C':1}",
+    "required": 3,
+    "steps": [
+      "right=0 'A': have={'A':1}. A in need, have['A']==need['A']=1 -> formed=1. formed(1)!=required(3).",
+      "right=1 'D': have+={'D':1}. D not in need. formed=1.",
+      "right=2 'O': have+={'O':1}. O not in need. formed=1.",
+      "right=3 'B': have+={'B':1}. B in need, have['B']==need['B']=1 -> formed=2. formed=2.",
+      "right=4 'E': have+={'E':1}. not in need. formed=2.",
+      "right=5 'C': have+={'C':1}. C in need, have['C']==1=need['C'] -> formed=3. formed==required=3 -> enter while.",
+      "  while: window=[0,5]='ADOBEC', len=6 < inf. min_len=6, res='ADOBEC'. lc=s[0]='A'. have['A']-=1=0. 'A' in need, have['A']=0 < need['A']=1 -> formed=2. left=1. Exit while (formed=2).",
+      "right=6 'O': have['O']=2. not in need. formed=2.",
+      "right=7 'D': have['D']=2. not in need. formed=2.",
+      "right=8 'E': have['E']=2. not in need. formed=2.",
+      "right=9 'B': have['B']=2. B in need, have['B']=2 != need['B']=1 (already satisfied). formed stays 2.",
+      "right=10 'A': have['A']=1. A in need, have['A']==need['A']=1 -> formed=3. Enter while.",
+      "  while: window=[1,10]='DOBECODEBA', len=10. 10 not < 6. lc=s[1]='D'. have['D']-=1=1. D not in need. left=2. Still formed=3.",
+      "  while: window=[2,10]='OBECODEBA', len=9. 9 not < 6. lc=s[2]='O'. have['O']-=1=1. not in need. left=3. formed=3.",
+      "  while: window=[3,10]='BECODEBA', len=8. not < 6. lc='B'. have['B']-=1=1. B in need, have['B']=1 >= need['B']=1. formed stays 3. left=4.",
+      "  while: window=[4,10]='ECODEBA', len=7. not < 6. lc='E'. have['E']-=1=1. not in need. left=5. formed=3.",
+      "  while: window=[5,10]='CODEBA', len=6. 6 not < 6 (equal, not strictly less). No update. lc='C'. have['C']-=1=0. C in need, have['C']=0 < need['C']=1 -> formed=2. left=6. Exit while.",
+      "right=11 'N': have+={'N':1}. not in need. formed=2.",
+      "right=12 'C': have['C']=1. C in need, have['C']==need['C']=1 -> formed=3. Enter while.",
+      "  while: window=[6,12]='ODEBANC', len=7. not < 6. lc=s[6]='O'. have['O']-=1=0. not in need. left=7. formed=3.",
+      "  while: window=[7,12]='DEBANC', len=6. not < 6. lc='D'. have['D']-=1=0. not in need. left=8. formed=3.",
+      "  while: window=[8,12]='EBANC', len=5. 5 < 6! min_len=5, res='EBANC'. Wait — let me recheck indices. s='ADOBECODEBANC'. s[8]='E',s[9]='B',s[10]='A',s[11]='N',s[12]='C'. 'EBANC'? But answer is 'BANC'. Let me recount: s[9]='B'. Actually s[8]='E',not 'B'... Hmm. lc=s[8]='E'. have['E']-=1. not in need. left=9. formed=3.",
+      "  while: window=[9,12]='BANC', len=4. 4 < 5... wait min_len was 6 not 5. 4 < 6. min_len=4, res='BANC'. lc=s[9]='B'. have['B']-=1=0. B in need, have['B']=0 < need['B']=1 -> formed=2. left=10. Exit while.",
+      "Loop ends. Return 'BANC'."
+    ]
+  },
+  "python_gotchas": [
+    "'res = res = s[left:right+1]' is a double assignment — harmless typo, should be 'res = s[left:right+1]'.",
+    "have[char] = have.get(char, 0) + 1 — always safe even for chars not in need. have tracks ALL characters in the window, not just those in need. This is intentional: we track all to correctly manage window frequency state.",
+    "The formed counter increments ONLY when have[char] == need[char] (exact equality). If have[char] goes from 2 to 3 and need[char] is 2, formed does NOT increment again — requirement was already satisfied.",
+    "The formed counter decrements ONLY when have[lc] < need[lc] after decrement. If have['B'] goes from 3 to 2 and need['B'] is 2, formed still does NOT decrement — requirement is still satisfied at exactly 2.",
+    "left is incremented AFTER the formed check. Order: remove char from have -> check if formed breaks -> increment left. If you increment left before the check, you would check the wrong character.",
+    "s[left:right+1] not s[left:right]: right is inclusive (current index). Python slice end is exclusive, so right+1 is needed. s[left:right] would miss the character at index right.",
+    "required = len(need) = number of UNIQUE characters in t, not len(t). For t='aab', required=2 (chars 'a' and 'b'), not 3."
+  ],
+  "common_mistakes": [
+    {
+      "mistake": "Using formed += 1 whenever have[char] >= need[char] (not just ==)",
+      "consequence": "formed would increment multiple times for the same character requirement — potentially exceeding required. The window would appear 'valid' prematurely or over-count."
+    },
+    {
+      "mistake": "Not checking 'lc in need' before decrementing formed",
+      "consequence": "Removing a character not in t (e.g., 'D' in the trace) would never reduce formed below need[lc] since lc is not in need — but without the guard, you might access need[lc] which KeyErrors or incorrectly evaluates."
+    },
+    {
+      "mistake": "Incrementing left before removing from have",
+      "consequence": "You would remove the wrong character (the new left after increment) instead of the old left. Window state becomes corrupted."
+    },
+    {
+      "mistake": "Setting required = len(t) instead of len(need)",
+      "consequence": "For t='aab', len(t)=3 but len(need)=2. required=3 means you'd need formed to reach 3, but formed only counts unique satisfied characters — maximum formed is 2. The while loop would never trigger, always returning empty string."
+    }
+  ],
+  "related_problems": [
+    {
+      "title": "Minimum Size Subarray Sum (LC 209)",
+      "relation": "Same expand-right shrink-left while-loop structure. That problem has a simple sum >= target condition. This problem has a multi-character frequency constraint tracked by the formed/required counters. LC 76 is the harder, generalized version."
+    },
+    {
+      "title": "Find All Anagrams in a String (LC 438)",
+      "relation": "Fixed-size sliding window with character frequency matching. Uses the same need/have frequency map pattern but the window size is fixed (len(p)) and the condition is exact equality of all frequencies. No shrinking — just slide one character at a time."
+    },
+    {
+      "title": "Permutation in String (LC 567)",
+      "relation": "Check if any permutation of t exists as a substring of s. Same fixed-window frequency matching as LC 438. Uses the same formed counter approach."
+    },
+    {
+      "title": "Longest Substring with At Most K Distinct Characters (LC 340)",
+      "relation": "Same sliding window with shrink-while-invalid pattern but tracks the number of distinct characters in the window (len(have)) rather than frequency satisfaction."
+    },
+    {
+      "title": "Substring with Concatenation of All Words (LC 30)",
+      "relation": "Harder variant — t is split into words of equal length. Uses the same multi-frequency map concept but on word units instead of characters."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "What does the 'formed' counter represent, and why is it more efficient than checking all keys in need on every step?",
+      "options": [
+        "formed counts the total number of characters added to the window",
+        "formed counts the number of unique characters in t whose frequency requirement is currently fully satisfied in the window. Checking all keys in need each step is O(|t|). The formed counter reduces this to O(1) — increment only on exact satisfaction, decrement only when falling below requirement.",
+        "formed tracks how many times the window has been valid",
+        "formed is the number of characters removed from the left so far"
+      ],
+      "answer": 1,
+      "explanation": "Without formed, you would check 'for char in need: if have[char] < need[char]: break' — O(|t|) per right step. With formed, the validity check is 'formed == required' — O(1). formed only changes when a character's exact threshold is crossed (up or down), so it accurately tracks overall validity without redundant per-character checks."
+    },
+    {
+      "id": 2,
+      "question": "Why does 'formed += 1' only trigger when have[char] == need[char], not when have[char] >= need[char]?",
+      "options": [
+        "To avoid counting the same character requirement twice. If we triggered on >=, then going from have[char]=0 to 1 (when need=1) would increment, AND going from 1 to 2 would increment again — double counting one satisfaction.",
+        "Because have[char] can never exceed need[char]",
+        "Because Python dict comparison only works with ==",
+        "To handle the case where need[char] is 0"
+      ],
+      "answer": 0,
+      "explanation": "The exact equality check is a gate: formed increments once when the count reaches the requirement — not before, not again when it exceeds. If formed incremented on any increase (have[char] >= need[char]), it would increment multiple times for one character, inflating formed beyond required. The formed counter must be a count of UNIQUE satisfied requirements, so each requirement can only contribute 1 to formed."
+    },
+    {
+      "id": 3,
+      "question": "Why does 'formed -= 1' only trigger when have[lc] < need[lc], not when have[lc] <= need[lc]?",
+      "options": [
+        "Because <= would decrement when have[lc] == need[lc], which still satisfies the requirement",
+        "Because have[lc] can never equal need[lc] after decrement",
+        "To avoid going below 0 in the formed counter",
+        "Because Python evaluates < faster than <="
+      ],
+      "answer": 0,
+      "explanation": "If have['B'] goes from 3 to 2 and need['B'] is 2: the requirement is STILL satisfied (have >= need). formed should NOT decrement. Only when have drops strictly below need (from 2 to 1, where need=2) does the requirement become unsatisfied. Using < instead of <= correctly identifies this exact moment of breaking."
+    },
+    {
+      "id": 4,
+      "question": "What is required = len(need), and why is it NOT len(t)?",
+      "options": [
+        "len(need) and len(t) are always equal",
+        "len(need) = number of UNIQUE characters in t. len(t) = total characters including duplicates. For t='aab': len(need)=2 (keys 'a','b'), len(t)=3. required must equal the number of unique satisfaction goals. If required=len(t)=3, formed could never reach 3 since formed only counts unique char satisfactions (max 2 for 'aab').",
+        "len(need) is faster to compute than len(t)",
+        "required uses len(need) to handle empty strings"
+      ],
+      "answer": 1,
+      "explanation": "formed counts unique character requirements satisfied — one increment per character TYPE, not per character OCCURRENCE. required must match this: number of unique characters in t = len(need). For t='aab': need={'a':2,'b':1}, len(need)=2. When have['a']=2 and have['b']=1, formed=2=required. If required were len(t)=3, formed would never equal required — the window would never be recognized as valid."
+    },
+    {
+      "id": 5,
+      "question": "What is the time complexity and why?",
+      "options": [
+        "O(m * n) — for each character in s, we scan all of t",
+        "O(m + n) — O(n) to build need from t, O(m) for the sliding window where each of the m characters in s is added (right) and removed (left) at most once",
+        "O(m^2) — the while loop inside the for loop",
+        "O(m log m) — the frequency map requires sorting"
+      ],
+      "answer": 1,
+      "explanation": "Building need: O(n). Sliding window: right visits each character in s once (m iterations). left visits each character at most once across the entire algorithm (bounded by m total increments). Each step does O(1) work (hash map operations). Total: O(m + n). The formed counter eliminates the O(|t|) per-step validity check."
+    },
+    {
+      "id": 6,
+      "question": "In the trace for s='ADOBECODEBANC', t='ABC', why does formed NOT increment when 'B' appears at right=9?",
+      "options": [
+        "Because 'B' is not in need",
+        "Because have['B'] goes from 1 to 2, but need['B']=1. The condition 'have[char] == need[char]' requires equality. have['B']=2 != need['B']=1 — requirement was already satisfied when 'B' first appeared at right=3 (have went from 0 to 1=need). Adding more 'B's does not increment formed again.",
+        "Because formed is already at its maximum",
+        "Because 'B' was already removed from the window by left"
+      ],
+      "answer": 1,
+      "explanation": "formed tracks when a requirement is first met. 'B' satisfied its requirement at right=3 when have['B'] went from 0 to 1 = need['B']. When 'B' appears again at right=9, have['B'] goes from 1 to 2. The check: have['B']=2 == need['B']=1? No. No increment. This prevents double-counting 'B's satisfaction."
+    },
+    {
+      "id": 7,
+      "question": "Why is the window check 'right - left + 1 < min_len' strictly less than (not <=)?",
+      "options": [
+        "Using <= would cause an infinite loop",
+        "Using < means we update only when we find a STRICTLY shorter window. Same-length windows are skipped. Using <= would also update res to a later same-length window. Both are correct per the problem (unique answer exists if valid), but < is conventional and slightly more efficient.",
+        "< handles the empty window edge case that <= misses",
+        "< and <= would give different answers for this problem"
+      ],
+      "answer": 1,
+      "explanation": "The problem guarantees the answer is unique when it exists, so < and <= give the same final answer. Using < is the conventional choice — only update when you genuinely found something shorter. Using <= would update res to any equally-short window found later (still correct but unnecessary work)."
+    },
+    {
+      "id": 8,
+      "question": "What happens when a character in s is NOT in t (e.g., 'D' in the trace)?",
+      "options": [
+        "The character is skipped entirely — have is not updated",
+        "The character is added to have (have['D'] increments). The 'char in need' check fails, so formed is not incremented. When the character is removed from the left during shrinking, have['D'] decrements. The 'lc in need' check fails, so formed is not decremented. The character participates in the window bounds but has no effect on validity.",
+        "The character causes an error because it is not in need",
+        "The character causes the window to immediately become invalid"
+      ],
+      "answer": 1,
+      "explanation": "have tracks ALL characters in the window for correct frequency accounting. When 'D' is added: have['D'] increments, 'D' in need is False, formed unchanged. When 'D' is removed: have['D'] decrements, 'D' in need is False, formed unchanged. 'D' contributes to window length but is irrelevant to validity. This is why both guards ('char in need' and 'lc in need') are necessary."
+    },
+    {
+      "id": 9,
+      "question": "What is the space complexity and what bounds it?",
+      "options": [
+        "O(m + n) — proportional to string lengths",
+        "O(|alphabet|) — need and have store at most one entry per unique character. For English letters (52 chars), this is effectively O(1). The maps cannot grow larger than the alphabet size regardless of m and n.",
+        "O(n) — need stores all characters of t",
+        "O(m) — have stores all characters of s in the worst case"
+      ],
+      "answer": 1,
+      "explanation": "Both need and have are character frequency maps. need has at most |unique chars in t| entries <= |alphabet|. have has at most |unique chars seen in window| entries <= |alphabet|. For lowercase + uppercase English letters: 52 entries max. This is O(1) with respect to m and n. Space does not grow with input size — it is bounded by the fixed alphabet size."
+    },
+    {
+      "id": 10,
+      "question": "s='a', t='aa'. What does the algorithm return?",
+      "options": [
+        "'a' — one 'a' satisfies the requirement",
+        "'' — need={'a':2}, required=1. right=0 'a': have={'a':1}. have['a']=1 != need['a']=2. formed stays 0. formed(0) != required(1). Loop ends. Return ''.",
+        "'aa' — the algorithm repeats characters",
+        "An IndexError — t is longer than s"
+      ],
+      "answer": 1,
+      "explanation": "need={'a':2}, required=len(need)=1. right=0, char='a': have={'a':1}. Check: have['a']=1 == need['a']=2? No. formed stays 0. formed(0) != required(1), while never triggers. Loop ends. min_len=inf. Return res='' (never updated). Correct — s only has one 'a' but t needs two."
+    },
+    {
+      "id": 11,
+      "question": "What is the order of operations when removing the leftmost character in the while loop?",
+      "options": [
+        "Increment left, then remove from have, then check formed",
+        "Store lc = s[left]. Decrement have[lc]. Check if lc in need AND have[lc] < need[lc] — decrement formed if so. THEN increment left. Order matters: check against the character at the OLD left position, not the new one.",
+        "Decrement formed first, then remove from have, then increment left",
+        "Any order works — the operations are independent"
+      ],
+      "answer": 1,
+      "explanation": "Correct order: (1) lc = s[left] — capture the character before moving. (2) have[lc] -= 1 — update frequency. (3) if lc in need and have[lc] < need[lc]: formed -= 1 — check validity AFTER updating frequency but BEFORE advancing left. (4) left += 1 — advance the boundary. If you advanced left first, s[left] would reference the NEXT character, removing the wrong character."
+    },
+    {
+      "id": 12,
+      "question": "For s='ADOBECODEBANC', t='ABC', when is the first valid window found, and what is it?",
+      "options": [
+        "At right=2 when 'O' is processed",
+        "At right=5 when 'C' is processed — window 'ADOBEC' [0,5] is the first time formed==required==3",
+        "At right=9 when 'A' appears for the second time",
+        "At right=12 when the last 'C' is processed"
+      ],
+      "answer": 1,
+      "explanation": "need = {'A':1,'B':1,'C':1}, required=3. formed reaches 3 when the third unique requirement is satisfied. 'A' satisfies at right=0, 'B' at right=3, 'C' at right=5. At right=5: formed=3=required. Enter while loop. Window [0,5]='ADOBEC', length 6 < inf. min_len=6, res='ADOBEC'. Then shrink by removing 'A' from left — formed drops to 2."
+    },
+    {
+      "id": 13,
+      "question": "How does this problem differ from 'Find All Anagrams in a String' (LC 438)?",
+      "options": [
+        "They are identical problems with different output types",
+        "LC 438 uses a fixed-size window (len(p)) — slide one char at a time. This problem uses a variable-size window — grow until valid, shrink to minimum. LC 438 finds all starting positions of valid windows. LC 76 finds the minimum length valid window. Both use need/have maps but the sliding mechanism differs.",
+        "LC 438 requires sorting; LC 76 does not",
+        "LC 76 handles duplicates in t; LC 438 does not"
+      ],
+      "answer": 1,
+      "explanation": "LC 438: window size is fixed at len(p). You slide by adding the new right char and removing the old left char simultaneously. Check if all frequencies match after each slide. LC 76: window is variable — expand until valid (formed==required), then shrink to minimum. Both use frequency maps to track satisfaction but the window management is fundamentally different."
+    },
+    {
+      "id": 14,
+      "question": "What would happen if you initialized formed and required as 0 and len(t) respectively (instead of 0 and len(need))?",
+      "options": [
+        "Nothing changes — len(need) and len(t) are equivalent",
+        "For t='aab': len(t)=3 but max possible formed=2 (only 2 unique characters). formed can never reach required=3. The while loop never triggers. The algorithm always returns '' — completely broken for t with repeated characters.",
+        "The algorithm would be faster — len(t) is smaller than len(need)",
+        "Only the time complexity changes — correctness is preserved"
+      ],
+      "answer": 1,
+      "explanation": "formed counts satisfied UNIQUE requirements. It can be at most len(need) = number of unique chars in t. If required = len(t) = 3 for t='aab', formed can reach at most 2. The condition formed==required is never satisfied. Every input returns ''. The initialization required = len(need) is critical for correctness when t has duplicate characters."
+    },
+    {
+      "id": 15,
+      "question": "Why does have track characters NOT in t (like 'D', 'O', 'E' in the trace)?",
+      "options": [
+        "It is a bug — have should only track characters in need",
+        "have tracks the full window state. When removing s[left] from the window, we update have[lc] regardless of whether lc is in need. This ensures have accurately reflects the current window's character frequencies. If we only tracked characters in need, have would be inconsistent when we later re-add those characters as the window slides.",
+        "have tracks non-t characters to detect invalid windows",
+        "Non-t characters are needed for the right-left+1 length calculation"
+      ],
+      "answer": 1,
+      "explanation": "have maintains accurate window frequencies for ALL characters. When 'D' enters the window, have['D']=1. When 'D' leaves, have['D']=0. If we skipped non-need characters: when 'A' later re-enters the window and then leaves, have['A'] would be incorrect (we might have lost track of an earlier 'A' that passed through). The guards 'char in need' and 'lc in need' ensure only need-relevant characters affect formed — but have still needs to be accurate for all characters."
+    },
+    {
+      "id": 16,
+      "question": "s='AABC', t='ABC'. What is the minimum window?",
+      "options": [
+        "'AABC' — the full string is the minimum",
+        "'ABC' — length 3, the last three characters",
+        "'ABC' starting at index 1: s[1:4]='ABC'. When right reaches index 3 ('C'), window [1,3]='ABC' might be found... but also window [0,3]='AABC' is found first. After shrinking from left: remove 'A' at 0, have['A']=1=need['A']=1, formed stays 3. Window [1,3]='ABC' length 3. Then remove 'A' at 1: have['A']=0 < need['A']=1, formed=2. So min window is 'ABC' length 3.",
+        "'BC' — just two characters"
+      ],
+      "answer": 1,
+      "explanation": "need={'A':1,'B':1,'C':1}, required=3. First valid window found when right=3 ('C'): window [0,3]='AABC', len=4. Shrink: remove s[0]='A', have['A'] goes 2->1, still >= need['A']=1, formed stays 3. Window [1,3]='ABC', len=3 < 4. Update res='ABC'. Shrink: remove s[1]='A', have['A'] goes 1->0 < need['A']=1, formed=2. Exit while. Return 'ABC'."
+    },
+    {
+      "id": 17,
+      "question": "What is the correct substring extraction, and what's wrong with s[left:right]?",
+      "options": [
+        "Both s[left:right] and s[left:right+1] are correct",
+        "s[left:right+1] is correct. Python slice s[a:b] gives indices a, a+1, ..., b-1. The current window is [left, right] where right is inclusive. To include s[right], the slice end must be right+1. s[left:right] would give s[left] through s[right-1] — missing the last character.",
+        "s[left:right] is correct because Python uses exclusive start",
+        "The slice should be s[left-1:right+1] to include boundaries"
+      ],
+      "answer": 1,
+      "explanation": "right is the current index being processed (inclusive right boundary). The window contains characters at indices left, left+1, ..., right. Python's s[left:right+1] = s[left], s[left+1], ..., s[right]. s[left:right] = s[left], ..., s[right-1] — this misses the rightmost character. The +1 is always needed when right is an inclusive index and you use Python slicing."
+    },
+    {
+      "id": 18,
+      "question": "t='', s='abc'. What does the algorithm return?",
+      "options": [
+        "'' — empty t means no characters needed, any window is valid but the minimum length would be 0 which is ''",
+        "The algorithm handles this based on required=len(need)=0 and formed=0. formed==required=0 is immediately true, so the while loop runs on the very first right step. This would produce a minimum window of length 1 (single character). But the problem constraints say n >= 1, so this edge case is excluded.",
+        "'abc' — the full string",
+        "An error — empty t causes division by zero"
+      ],
+      "answer": 1,
+      "explanation": "If t='': need={}, required=len(need)=0. formed starts at 0 = required = 0. The while loop condition is immediately true at right=0 (before any formed increments). The algorithm would record single-character windows. However, the problem constraints guarantee n >= 1, so t is never empty in valid inputs. This is a theoretical edge case worth knowing."
+    },
+    {
+      "id": 19,
+      "question": "Can have[char] ever be greater than need[char]? Is this a problem?",
+      "options": [
+        "No — have is always clamped to need values",
+        "Yes — and it is intentional. When a character in need appears more times in the window than required, have[char] > need[char]. This is fine: formed was incremented once when have[char] first reached need[char], and does not increment again. When shrinking, formed only decrements when have drops strictly below need — not when it drops from 3 to 2 (still satisfied at 2). Over-satisfaction is harmless.",
+        "Yes — it causes formed to be overcount",
+        "Yes — it means the window is invalid"
+      ],
+      "answer": 1,
+      "explanation": "Consider t='AB' and window 'AABB': have['A']=2, need['A']=1. have['A'] > need['A'] — perfectly fine. formed for 'A' was incremented once (when have went from 0 to 1). When shrinking: remove one 'A', have['A']=1, still >= need['A']=1, formed stays. Remove second 'A', have['A']=0 < need['A']=1, formed decrements. Over-satisfaction acts as a buffer during shrinking."
+    },
+    {
+      "id": 20,
+      "question": "Compare this sliding window pattern to Minimum Size Subarray Sum (LC 209). What is structurally identical and what differs?",
+      "options": [
+        "They are completely different algorithms",
+        "Identical structure: outer for loop (expand right), inner while loop (shrink left while valid). Different validity condition: LC 209 checks curr_sum >= target (single integer). LC 76 checks formed == required (frequency map satisfaction). The while loop body in both records the current result then removes the leftmost element and checks if validity breaks.",
+        "LC 209 uses BFS; LC 76 uses two pointers",
+        "LC 76 always returns a string; LC 209 always returns an integer — they share no structure"
+      ],
+      "answer": 1,
+      "explanation": "Both are the canonical expand-right-shrink-left sliding window pattern. The template: for right in range(m): add element; while valid: record result; remove left element; update validity; left++. LC 209's 'valid' = curr_sum >= target. LC 76's 'valid' = formed == required. Recognizing this template allows you to solve both (and many other problems) from the same mental model."
+    },
+    {
+      "id": 21,
+      "question": "What is the 'ping-pong' behavior of the algorithm?",
+      "options": [
+        "The left and right pointers alternate moving each step",
+        "The algorithm alternates between phases: expand right until the window becomes valid (formed==required), then shrink left until the window becomes invalid (formed < required). This shrink-until-invalid then expand-until-valid cycle repeats across the entire string. Each character is processed at most twice (once when added by right, once when removed by left).",
+        "The algorithm searches forward and backward simultaneously",
+        "formed alternates between 0 and required at each step"
+      ],
+      "answer": 1,
+      "explanation": "The outer for loop always expands right. The inner while loop always shrinks left. When the while exits, the right pointer continues in the for loop until valid again. This creates a natural expand-shrink rhythm: find validity by expanding, minimize by shrinking, lose validity, expand again. The result is that every character is touched at most twice — once by right (add) and once by left (remove) — giving O(m) total."
+    },
+    {
+      "id": 22,
+      "question": "s='bba', t='ab'. Trace the algorithm and return the result.",
+      "options": [
+        "'bba' — the full string",
+        "'ba' — the last two characters, minimum window containing both 'a' and 'b'",
+        "'bb' — wrong, misses 'a'",
+        "'ab' — but 'a' comes after 'b' in s"
+      ],
+      "answer": 1,
+      "explanation": "need={'a':1,'b':1}, required=2. right=0 'b': have={'b':1}, 'b' in need, have['b']=1=need['b'] -> formed=1. right=1 'b': have={'b':2}, have['b']=2!=need['b']=1 -> formed stays 1. right=2 'a': have+={'a':1}, 'a' in need, have['a']=1=need['a'] -> formed=2. While: window=[0,2]='bba', len=3, min_len=3, res='bba'. Remove s[0]='b': have['b']=1, 'b' in need, have['b']=1>=need['b']=1 -> formed stays 2. left=1. While: window=[1,2]='ba', len=2 <3, min_len=2, res='ba'. Remove s[1]='b': have['b']=0 < need['b']=1 -> formed=1. left=2. Exit. Return 'ba'."
+    },
+    {
+      "id": 23,
+      "question": "What is the double assignment 'res = res = s[left:right+1]' and does it affect correctness?",
+      "options": [
+        "It assigns res twice — first to itself, then to the slice. The second assignment overwrites the first. Net effect: res = s[left:right+1]. Harmless typo, should be cleaned up before submission.",
+        "It is a Python idiom for atomic assignment to prevent race conditions",
+        "It causes a SyntaxError in Python 3",
+        "It is intentional — it clears the old res value before assigning the new one"
+      ],
+      "answer": 0,
+      "explanation": "Python evaluates 'a = b = expr' as: evaluate expr once, assign to b, then assign to a. So 'res = res = s[left:right+1]' evaluates s[left:right+1] once, assigns to the second res, then assigns to the first res. Both assignments go to the same variable. Net result: res = s[left:right+1]. Identical to a single assignment. It is clearly a typo (copy-paste artifact) and should be 'res = s[left:right+1]'."
+    },
+    {
+      "id": 24,
+      "question": "If s and t contain both uppercase and lowercase letters, does the algorithm need modification?",
+      "options": [
+        "Yes — convert everything to lowercase first",
+        "No — the algorithm treats each character as a distinct key in the hash map. 'A' and 'a' are different keys. need, have, and all comparisons work correctly with mixed case. The constraints explicitly state s and t have both uppercase and lowercase, and no modification is needed.",
+        "Yes — add a case-insensitive comparison flag to need",
+        "Yes — uppercase letters require a separate map"
+      ],
+      "answer": 1,
+      "explanation": "Python dict uses the character itself as the key. 'A' and 'a' hash to different values and are different keys. need={'A':1} would require 'A' (not 'a') in the window. The algorithm naturally handles mixed case without any modification. This is why the space complexity mentions 52 possible entries (26 uppercase + 26 lowercase)."
+    },
+    {
+      "id": 25,
+      "question": "A follow-up: can you solve this problem in O(m + n) time using only O(1) extra space (ignoring the output)?",
+      "options": [
+        "Yes — replace the hash maps with two arrays of size 128 (ASCII)",
+        "No — hash maps are required for character lookup",
+        "Yes — sort t first for O(1) lookup",
+        "No — O(m + n) time requires at least O(m) space"
+      ],
+      "answer": 0,
+      "explanation": "Since s and t contain only English letters (at most 52 unique characters), you can replace the dicts with fixed-size arrays of length 52 or 128 (ASCII codes). Array access is O(1) like dict but with zero hash overhead. Space: O(52) = O(1). Time: O(m + n). This is the space-optimal version. The algorithm logic is identical — just substitute arr[ord(char) - ord('A')] for dict[char]. This is a common follow-up question."
+    }
+  ]
+}
