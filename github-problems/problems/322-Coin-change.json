@@ -1,0 +1,435 @@
+{
+  "id": "322",
+  "title": "Coin Change",
+  "difficulty": "Medium",
+  "tags": ["Dynamic Programming", "BFS", "Array"],
+  "description": "You are given an integer array coins representing coins of different denominations and an integer amount representing a total amount of money. Return the fewest number of coins that you need to make up that amount. If that amount of money cannot be made up by any combination of the coins, return -1. You may assume that you have an infinite number of each kind of coin.",
+  "examples": [
+    {
+      "input": "coins = [1,2,5], amount = 11",
+      "output": "3",
+      "explanation": "11 = 5 + 5 + 1. Three coins needed."
+    },
+    {
+      "input": "coins = [2], amount = 3",
+      "output": "-1",
+      "explanation": "Cannot make 3 from only 2-denomination coins."
+    },
+    {
+      "input": "coins = [1], amount = 0",
+      "output": "0",
+      "explanation": "Zero amount needs zero coins."
+    },
+    {
+      "input": "coins = [1,2,5], amount = 0",
+      "output": "0",
+      "explanation": "Base case: amount 0 always needs 0 coins."
+    }
+  ],
+  "constraints": [
+    "1 <= coins.length <= 12",
+    "1 <= coins[i] <= 2^31 - 1",
+    "0 <= amount <= 10^4"
+  ],
+  "intuition": "Think of building the answer from the bottom up. We want the minimum coins to make amount A. If we knew the minimum coins for every smaller amount, we could answer: the minimum coins for A is 1 + min(coins to make A-coin) for each valid coin denomination. This is the classic bottom-up DP recurrence. Initialize dp[0]=0 (zero amount needs zero coins) and everything else to a sentinel 'infinity' value. Fill the table from amount 1 to amount, and the answer is dp[amount]. If it is still the sentinel, the amount is unreachable.",
+  "why_n_as_sentinel": "The sentinel value is n = amount + 1. Why not float('inf')? Because dp[curr_amt - coin] + 1 on a float('inf') would give float('inf') + 1 = float('inf') — correct but requires float handling. Using n = amount + 1 as sentinel works because: the maximum number of coins needed for any reachable amount is at most amount (using all 1-coin). So if dp[x] == amount + 1, the amount x is unreachable. amount + 1 is the smallest integer guaranteed to be larger than any valid answer.",
+  "recurrence": {
+    "base_case": "dp[0] = 0 — zero amount needs zero coins",
+    "transition": "dp[curr_amt] = min(dp[curr_amt], dp[curr_amt - coin] + 1) for each coin where coin <= curr_amt",
+    "meaning": "To make curr_amt, try using each coin denomination. If we use coin c, we need dp[curr_amt - c] more coins to make the remaining amount, plus 1 for coin c itself. Take the minimum over all valid coins."
+  },
+  "why_start_from_1": "The outer loop starts at range(1, n) not range(0, n). Starting from 0 would attempt to compute dp[0] again. The comment in the code notes: if you start from 0, you can never get past it because dp[0] = 0 is the base case and re-computing it (dp[0] = min(dp[0], dp[0-coin]+1)) would access dp[-coin] — negative indices in Python wrap around to the end of the list, giving silently wrong results.",
+  "coin_skip_guard": "The 'if coin > curr_amt: continue' guard prevents accessing dp[curr_amt - coin] with a negative index. If coin > curr_amt, curr_amt - coin < 0, which in Python silently wraps to the end of the dp array (negative indexing). This would read garbage values without the guard. The guard is a correctness requirement, not an optimization.",
+  "approach": {
+    "name": "Bottom-up DP (tabulation)",
+    "steps": [
+      "Set n = amount + 1 (sentinel value).",
+      "Initialize dp = [n] * (amount + 1).",
+      "Set dp[0] = 0 (base case).",
+      "For curr_amt from 1 to amount (inclusive):",
+      "  For each coin in coins:",
+      "    If coin > curr_amt: skip (would cause negative index access).",
+      "    dp[curr_amt] = min(dp[curr_amt], dp[curr_amt - coin] + 1).",
+      "Return dp[amount] if dp[amount] != n else -1."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "from typing import List\n\nclass Solution:\n    def coinChange(self, coins: List[int], amount: int) -> int:\n        n = amount + 1\n        # setting dp values to sentinel: larger than any valid answer\n        dp = [n] * n\n        # base case: 0 amount needs 0 coins\n        dp[0] = 0\n\n        # Bug note: starting from 0 re-computes dp[0] and can\n        # cause negative index access (dp[-coin] wraps in Python)\n        for curr_amt in range(1, n):\n            for coin in coins:\n                if coin > curr_amt:\n                    continue   # avoids dp[curr_amt - coin] with negative index\n                dp[curr_amt] = min(dp[curr_amt], dp[curr_amt - coin] + 1)\n\n        # if dp[amount] is still sentinel, amount is unreachable\n        return dp[amount] if dp[amount] != n else -1\n\n        # Time Complexity:  O(amount * len(coins))\n        # Space Complexity: O(amount)"
+  },
+  "complexity": {
+    "time": "O(amount * len(coins)) — outer loop runs amount times, inner loop runs len(coins) times. Each iteration is O(1).",
+    "space": "O(amount) — the dp array of size amount + 1."
+  },
+  "full_trace": {
+    "input": "coins=[1,2,5], amount=11",
+    "sentinel": 12,
+    "initial_dp": "[0,12,12,12,12,12,12,12,12,12,12,12]",
+    "steps": [
+      "curr_amt=1: coin=1: dp[0]+1=1 < 12 -> dp[1]=1. coin=2: 2>1 skip. coin=5: 5>1 skip. dp[1]=1.",
+      "curr_amt=2: coin=1: dp[1]+1=2. coin=2: dp[0]+1=1. min(2,1)=1 -> dp[2]=1. coin=5: skip. dp[2]=1.",
+      "curr_amt=3: coin=1: dp[2]+1=2. coin=2: dp[1]+1=2. min(2,2)=2 -> dp[3]=2. coin=5: skip. dp[3]=2.",
+      "curr_amt=4: coin=1: dp[3]+1=3. coin=2: dp[2]+1=2. min(3,2)=2 -> dp[4]=2. coin=5: skip. dp[4]=2.",
+      "curr_amt=5: coin=1: dp[4]+1=3. coin=2: dp[3]+1=3. coin=5: dp[0]+1=1. min(3,3,1)=1 -> dp[5]=1.",
+      "curr_amt=6: coin=1: dp[5]+1=2. coin=2: dp[4]+1=3. coin=5: dp[1]+1=2. min(2,3,2)=2 -> dp[6]=2.",
+      "curr_amt=7: coin=1: dp[6]+1=3. coin=2: dp[5]+1=2. coin=5: dp[2]+1=2. min(3,2,2)=2 -> dp[7]=2.",
+      "curr_amt=8: coin=1: dp[7]+1=3. coin=2: dp[6]+1=3. coin=5: dp[3]+1=3. min(3,3,3)=3 -> dp[8]=3.",
+      "curr_amt=9: coin=1: dp[8]+1=4. coin=2: dp[7]+1=3. coin=5: dp[4]+1=3. min(4,3,3)=3 -> dp[9]=3.",
+      "curr_amt=10: coin=1: dp[9]+1=4. coin=2: dp[8]+1=4. coin=5: dp[5]+1=2. min(4,4,2)=2 -> dp[10]=2.",
+      "curr_amt=11: coin=1: dp[10]+1=3. coin=2: dp[9]+1=4. coin=5: dp[6]+1=3. min(3,4,3)=3 -> dp[11]=3.",
+      "dp[11]=3 != 12. Return 3."
+    ]
+  },
+  "alternative_bfs_approach": {
+    "name": "BFS (treat as shortest path problem)",
+    "time": "O(amount * len(coins))",
+    "space": "O(amount)",
+    "description": "Model each amount as a node. An edge from node x to node x+coin for each coin denomination. Find the shortest path from 0 to amount. BFS naturally finds shortest path on unweighted graphs. Each BFS level = one more coin used.",
+    "code": "from collections import deque\n\ndef coinChange(self, coins, amount):\n    if amount == 0:\n        return 0\n    visited = set([0])\n    queue = deque([0])\n    steps = 0\n    while queue:\n        steps += 1\n        for _ in range(len(queue)):\n            curr = queue.popleft()\n            for coin in coins:\n                nxt = curr + coin\n                if nxt == amount:\n                    return steps\n                if nxt < amount and nxt not in visited:\n                    visited.add(nxt)\n                    queue.append(nxt)\n    return -1",
+    "why_bfs_works": "Each edge (adding one coin) has weight 1. BFS on an unweighted graph finds the path with fewest edges = fewest coins. DP and BFS solve the same problem — BFS is more intuitive as 'shortest path', DP is more standard for interviews."
+  },
+  "top_down_memoization": {
+    "name": "Top-down DP with memoization",
+    "time": "O(amount * len(coins))",
+    "space": "O(amount) for memo + O(amount) call stack",
+    "code": "from functools import lru_cache\n\ndef coinChange(self, coins, amount):\n    @lru_cache(maxsize=None)\n    def dp(rem):\n        if rem < 0:\n            return float('inf')\n        if rem == 0:\n            return 0\n        return min(dp(rem - c) + 1 for c in coins)\n\n    result = dp(amount)\n    return result if result != float('inf') else -1",
+    "tradeoff": "More intuitive recursive structure. lru_cache handles memoization automatically. Downside: O(amount) call stack depth — Python's default recursion limit (~1000) can be hit for large amounts. Bottom-up DP avoids this entirely."
+  },
+  "comparison_table": {
+    "columns": ["Approach", "Time", "Space", "Notes"],
+    "rows": [
+      ["Bottom-up DP (your solution)", "O(amount * k)", "O(amount)", "Iterative, no recursion limit, standard interview answer"],
+      ["Top-down DP + memo", "O(amount * k)", "O(amount)", "Recursive, intuitive, watch recursion depth"],
+      ["BFS", "O(amount * k)", "O(amount)", "Shortest-path framing, visited set prevents revisits"],
+      ["Brute force recursion", "O(k^amount)", "O(amount)", "Exponential — never use"]
+    ]
+  },
+  "python_gotchas": [
+    "dp = [n] * n where n = amount + 1. The array has indices 0 through amount (size n = amount+1). Do NOT confuse n (the sentinel value AND the array size) — they are the same number intentionally.",
+    "Starting the outer loop at range(0, n) instead of range(1, n) re-computes dp[0]. Worse: for coins larger than 0, dp[0 - coin] = dp[-coin] uses Python's negative indexing, silently reading the END of the dp array. This gives wrong answers with no error.",
+    "Without the 'if coin > curr_amt: continue' guard: dp[curr_amt - coin] with curr_amt - coin < 0 uses Python's negative index, wrapping to dp[-1] = dp[amount] or dp[amount - coin + curr_amt]. This reads unrelated values — no IndexError, just wrong answers.",
+    "The sentinel value must be LARGER than any valid answer. Max valid answer is amount (using all 1s). amount + 1 is the smallest safe sentinel. Using amount instead of amount+1 would incorrectly flag amount (using all 1s) as unreachable.",
+    "Final check: dp[amount] != n not dp[amount] == -1. We never stored -1 in dp — unreachable amounts stay at the sentinel value n. Comparing to -1 would always pass (dp values are all positive), returning the wrong sentinel value.",
+    "The inner and outer loop order can be swapped — iterating coins in the outer loop and amounts in the inner loop also gives correct bottom-up DP. The current order (amounts outer, coins inner) is more cache-friendly."
+  ],
+  "related_problems": [
+    {
+      "title": "Coin Change 2 (LC 518)",
+      "relation": "Count the number of ways to make the amount (not minimum coins). Uses the same DP structure but dp[0]=1 (one way to make 0) and the transition sums instead of taking min. Outer loop iterates coins (not amounts) to avoid counting permutations as distinct."
+    },
+    {
+      "title": "Perfect Squares (LC 279)",
+      "relation": "Identical problem structure — coins are replaced by perfect squares [1,4,9,16,...]. Same recurrence dp[n] = min(dp[n-sq]+1) for each perfect square sq <= n. Same sentinel, same base case."
+    },
+    {
+      "title": "Jump Game II (LC 45)",
+      "relation": "Minimum steps/jumps to reach the end. Greedy approach works there due to monotonic structure. Coin change requires DP because coin choices can overlap in complex ways."
+    },
+    {
+      "title": "Minimum Cost Climbing Stairs (LC 746)",
+      "relation": "Same bottom-up DP table structure with a cost at each step. Simpler recurrence (only two previous states) but the mental model of 'minimum cost to reach this state' is identical."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "What is the recurrence relation for dp[curr_amt] and what does each term mean?",
+      "options": [
+        "dp[curr_amt] = dp[curr_amt - 1] + 1 — always use the previous amount",
+        "dp[curr_amt] = min(dp[curr_amt - coin] + 1) for each coin <= curr_amt — the minimum over all coin denominations of: (min coins to make the remaining amount) + 1 for this coin",
+        "dp[curr_amt] = sum(dp[curr_amt - coin]) for all coins — sum all ways",
+        "dp[curr_amt] = dp[curr_amt - max(coins)] + len(coins)"
+      ],
+      "answer": 1,
+      "explanation": "To make curr_amt, try each coin denomination c (where c <= curr_amt). Using coin c leaves curr_amt - c remaining, which takes dp[curr_amt - c] coins. Total: dp[curr_amt - c] + 1. Take the minimum over all valid coins. This is the classic unbounded knapsack recurrence where each item (coin) can be used unlimited times."
+    },
+    {
+      "id": 2,
+      "question": "Why is the sentinel value n = amount + 1 and not float('inf') or amount?",
+      "options": [
+        "float('inf') cannot be compared with integers in Python",
+        "n = amount + 1 is the smallest integer strictly greater than any valid answer (max valid = amount coins of denomination 1). Using amount would incorrectly flag amounts reachable with all-1 coins as unreachable. float('inf') works but requires float arithmetic.",
+        "amount + 1 is chosen for array sizing convenience only",
+        "The sentinel must be a prime number for hashing purposes"
+      ],
+      "answer": 1,
+      "explanation": "Valid answers range from 0 to amount. The maximum valid answer is 'amount' (amount coins each of value 1). So amount+1 is the smallest integer that cannot be a valid answer — perfect as a sentinel. Using amount itself would mark dp[amount]=amount as 'unreachable' even when amount is achievable with all 1-coins. float('inf') is correct but creates float/int type mixing."
+    },
+    {
+      "id": 3,
+      "question": "What is the bug if you start the outer loop at range(0, n) instead of range(1, n)?",
+      "options": [
+        "dp[0] would be overwritten with the wrong value",
+        "For curr_amt=0 and any coin c: coin > 0 = curr_amt, so 'if coin > curr_amt: continue' fires for all coins. dp[0] stays 0 — accidentally correct. But without the guard: dp[0-coin] = dp[-coin] uses Python negative indexing, wrapping to dp[n-coin]. This reads the END of the dp array (unrelated values), corrupting results without raising an error.",
+        "Python raises an IndexError for range(0, n)",
+        "The loop runs one extra iteration changing the time complexity"
+      ],
+      "answer": 1,
+      "explanation": "With the guard (if coin > curr_amt: continue): starting at 0 seems safe because no coin passes the guard for curr_amt=0. But without the guard (or if someone removes it), dp[0-coin] = dp[-coin] silently accesses the end of the array. Even with the guard, starting at 0 is semantically wrong — the comment in the code warns about this. Start at 1, always."
+    },
+    {
+      "id": 4,
+      "question": "Why is the 'if coin > curr_amt: continue' guard necessary?",
+      "options": [
+        "To skip coins that are too expensive to ever be useful",
+        "To prevent accessing dp[curr_amt - coin] when curr_amt - coin < 0. In Python, negative list indices wrap around to the END of the list. Without the guard, dp[-1] = dp[amount], dp[-2] = dp[amount-1], etc. — reading completely wrong values silently, with no IndexError.",
+        "To improve time complexity by skipping unnecessary iterations",
+        "To handle the case where amount = 0"
+      ],
+      "answer": 1,
+      "explanation": "If coin > curr_amt, then curr_amt - coin < 0. In most languages this would be an IndexError. In Python, list[-1] = list[last_element]. So dp[curr_amt - coin] with a negative result accesses an unintended element. For example, dp[-1] = dp[amount] — the very answer we're trying to compute. This corruption produces silently wrong results, making it one of the most dangerous Python bugs in DP."
+    },
+    {
+      "id": 5,
+      "question": "What is the time complexity and why?",
+      "options": [
+        "O(amount + len(coins)) — two separate passes",
+        "O(amount * len(coins)) — the outer loop runs amount times; for each, the inner loop runs len(coins) times. Each inner iteration is O(1).",
+        "O(amount^2) — nested loops on amounts",
+        "O(2^len(coins)) — exponential in number of coin types"
+      ],
+      "answer": 1,
+      "explanation": "Outer loop: amount iterations (1 through amount). Inner loop: len(coins) iterations per outer step. Each step: O(1) comparison and min(). Total: O(amount * len(coins)). With amount <= 10^4 and len(coins) <= 12: at most 120,000 operations — very fast."
+    },
+    {
+      "id": 6,
+      "question": "coins=[2], amount=3. Trace dp and explain why -1 is returned.",
+      "options": [
+        "dp=[0,4,4,4]. dp[3]=4 != sentinel 4=3+1. Wait — n=4. dp=[0,4,4,4]. curr_amt=1: coin=2 > 1, skip. dp[1]=4. curr_amt=2: dp[0]+1=1. dp[2]=1. curr_amt=3: coin=2: dp[1]+1=5... wait dp[1]=4, dp[1]+1=5. min(4,5)=4. dp[3]=4=n. Return -1.",
+        "dp=[0,1,1,1]. dp[3]=1. Return 1.",
+        "dp=[0,4,1,4]. dp[3]=4. Return -1.",
+        "Error — cannot make odd amounts with even coins"
+      ],
+      "answer": 0,
+      "explanation": "n=4, dp=[0,4,4,4]. curr_amt=1: coin=2>1 skip. dp[1]=4. curr_amt=2: coin=2: dp[0]+1=1<4. dp[2]=1. curr_amt=3: coin=2: dp[1]+1=4+1=5. min(4,5)=4. dp[3]=4=n=sentinel. Return -1. Cannot make 3 with only 2-coins. Correct."
+    },
+    {
+      "id": 7,
+      "question": "Why does dp[0] = 0 serve as the base case?",
+      "options": [
+        "0 is a placeholder that gets overwritten in the first iteration",
+        "Amount 0 needs exactly 0 coins — trivially true. All other dp values are built relative to dp[0]. For any coin c used to make amount c: dp[c] = dp[c-c] + 1 = dp[0] + 1 = 1. The base case is the foundation of the entire bottom-up construction.",
+        "dp[0] = 0 prevents division by zero in the recurrence",
+        "It is set to 0 to match the sentinel check at the end"
+      ],
+      "answer": 1,
+      "explanation": "dp[0]=0 means 'it takes 0 coins to make amount 0'. This is the anchor from which all other values are derived. For a coin of denomination c: dp[c] = dp[0] + 1 = 1 (one coin of value c makes amount c). Without this base case, no dp value could ever be computed from the sentinel n — dp[c-c] = dp[0] = n would give dp[c] = n+1, inflating all values and breaking the algorithm."
+    },
+    {
+      "id": 8,
+      "question": "coins=[1,2,5], amount=11. What is dp[5] and how is it derived?",
+      "options": [
+        "dp[5]=3 — using three 1s and one 2",
+        "dp[5]=1 — using one 5-coin directly. coin=5: dp[5-5]+1 = dp[0]+1 = 0+1 = 1. This is smaller than the results from coin=1 (dp[4]+1=3) and coin=2 (dp[3]+1=3).",
+        "dp[5]=5 — using five 1-coins",
+        "dp[5]=2 — using one 2-coin and one 3-coin"
+      ],
+      "answer": 1,
+      "explanation": "At curr_amt=5: coin=1: dp[4]+1=3 (dp[4]=2 from earlier). coin=2: dp[3]+1=3 (dp[3]=2). coin=5: dp[0]+1=1. min(3,3,1)=1. dp[5]=1. The 5-coin denomination directly solves amount 5 in one step, dominating the other options."
+    },
+    {
+      "id": 9,
+      "question": "How does the BFS approach model this problem?",
+      "options": [
+        "BFS is used to sort the coins in order",
+        "Model amounts as nodes (0 to amount). Each coin c creates an edge from amount x to x+c. Find shortest path from 0 to amount. BFS on unweighted graph = fewest edges = fewest coins. Each BFS level represents one additional coin used.",
+        "BFS explores all coin combinations breadth-first",
+        "BFS backtracks when a dead end is found"
+      ],
+      "answer": 1,
+      "explanation": "The coin change problem is equivalent to: shortest path on a directed graph where nodes are amounts 0..amount and edges represent using a coin. BFS naturally finds the shortest path (minimum coins) because it explores all nodes reachable in k steps before exploring k+1 steps. A visited set prevents re-processing amounts already reachable in fewer coins."
+    },
+    {
+      "id": 10,
+      "question": "The return statement is 'return dp[amount] if dp[amount] != n else -1'. Why != n and not != float('inf')?",
+      "options": [
+        "float('inf') is always not equal to integers",
+        "The sentinel stored in dp is n = amount + 1 (an integer), not float('inf'). Checking dp[amount] != float('inf') would always be True (an integer is never float('inf')), so the -1 branch would never trigger. The check must use the same sentinel that was stored.",
+        "Using float('inf') would require importing math",
+        "n is checked for efficiency — float comparison is slower"
+      ],
+      "answer": 1,
+      "explanation": "dp is initialized with n = amount+1 as the sentinel. If an amount is unreachable, dp[amount] stays at n. The check must compare to n. Comparing to float('inf') would never match (an integer != float('inf') by Python type comparison rules), so the function would return the sentinel n instead of -1. Always compare to the same sentinel you stored."
+    },
+    {
+      "id": 11,
+      "question": "Can the inner and outer loops be swapped (coins outer, amounts inner)? What changes?",
+      "options": [
+        "No — the order is fixed by the recurrence",
+        "Yes — both orderings correctly fill all dp[curr_amt] values. Coins outer, amounts inner: for each coin, update all reachable amounts. Amounts outer, coins inner (current code): for each amount, try all coins. Both are O(amount * len(coins)) and give identical dp arrays.",
+        "Yes but the time complexity changes to O(amount + len(coins))",
+        "No — swapping would compute dp from right to left"
+      ],
+      "answer": 1,
+      "explanation": "The DP transition dp[curr_amt] = min(dp[curr_amt], dp[curr_amt-coin]+1) only depends on dp[curr_amt-coin] which has a smaller index. Whether you iterate amounts then coins or coins then amounts, by the time you compute dp[curr_amt], dp[curr_amt-coin] has already been filled for all coin <= curr_amt. Both orderings are correct. Amounts-outer is slightly more cache-friendly (sequential memory access)."
+    },
+    {
+      "id": 12,
+      "question": "coins=[1], amount=0. What does the algorithm return?",
+      "options": [
+        "1 — at least one coin is needed",
+        "0 — n=1, dp=[0], outer loop range(1,1) is empty, no iterations. dp[0]=0 != n=1. Return 0.",
+        "-1 — amount=0 is a special case",
+        "The algorithm raises an IndexError"
+      ],
+      "answer": 1,
+      "explanation": "amount=0: n=1. dp=[0] (size 1). Outer loop: range(1, 1) = empty. No iterations. dp[0]=0, n=1. dp[0] != n (0 != 1). Return dp[0]=0. Correct — zero amount needs zero coins. The base case dp[0]=0 handles this entirely."
+    },
+    {
+      "id": 13,
+      "question": "What is the difference between this unbounded knapsack variant and a 0/1 knapsack?",
+      "options": [
+        "Unbounded knapsack uses sorting; 0/1 knapsack does not",
+        "In unbounded knapsack (coin change), each item (coin) can be used unlimited times. In 0/1 knapsack, each item can be used at most once. Coin change iterates amounts forward, allowing each coin to contribute to all larger amounts (reusing allowed). 0/1 knapsack iterates amounts backward to prevent counting the same item twice.",
+        "0/1 knapsack uses memoization; unbounded uses tabulation",
+        "They have different time complexities"
+      ],
+      "answer": 1,
+      "explanation": "Coin change is unbounded knapsack: coins can be reused. The forward iteration (curr_amt from 1 to amount) means when computing dp[curr_amt], dp[curr_amt-coin] may itself have used coin c — that is fine, we want to reuse coins. In 0/1 knapsack, iterating amounts backward ensures each item is considered only once per fill pass, preventing reuse."
+    },
+    {
+      "id": 14,
+      "question": "How does Coin Change 2 (LC 518) differ from this problem in its DP setup?",
+      "options": [
+        "LC 518 also minimizes coins but for a different target",
+        "LC 518 counts the NUMBER OF WAYS to make the amount. dp[0]=1 (one way to make 0: use nothing). Transition: dp[curr_amt] += dp[curr_amt - coin]. The outer loop iterates COINS, inner iterates amounts — to avoid counting permutations as distinct combinations (critical difference from this problem).",
+        "LC 518 uses a 2D DP table while LC 322 uses 1D",
+        "LC 518 has the same recurrence but different base case only"
+      ],
+      "answer": 1,
+      "explanation": "LC 322 minimizes (uses min) with sentinel initialization. LC 518 counts (uses addition) with dp[0]=1. The crucial loop order difference: LC 518 puts coins in the outer loop and amounts in the inner loop. This ensures each coin combination is counted once — [1,2] and [2,1] are the same combination. If amounts were outer, both orderings would be counted separately (permutation counting, not combination counting)."
+    },
+    {
+      "id": 15,
+      "question": "Perfect Squares (LC 279) has the same structure. What replaces 'coins' in that problem?",
+      "options": [
+        "Prime numbers up to n",
+        "All perfect squares up to n: [1, 4, 9, 16, 25, ...]. The problem asks for the minimum number of perfect squares that sum to n. Same recurrence: dp[n] = min(dp[n-sq]+1) for each perfect square sq <= n. Same sentinel, same base case dp[0]=0.",
+        "All integers from 1 to sqrt(n)",
+        "The first sqrt(n) prime numbers"
+      ],
+      "answer": 1,
+      "explanation": "Perfect Squares is coin change with coins = [1, 4, 9, 16, ...] (squares up to n). The problem statement says 'minimum number of perfect squares that sum to n' — identical to 'minimum coins to make amount' with coin denominations being perfect squares. The DP code is nearly identical; just generate the squares list first."
+    },
+    {
+      "id": 16,
+      "question": "Why does the top-down memoization approach risk hitting Python's recursion limit?",
+      "options": [
+        "lru_cache has a maximum size of 1000 by default",
+        "The recursive call dp(rem) calls dp(rem - coin) for each coin. In the worst case (coin=1, amount=10^4), the call stack is dp(10000) -> dp(9999) -> ... -> dp(0). That is 10,001 frames deep. Python's default recursion limit is 1000. This raises RecursionError for large amounts without sys.setrecursionlimit.",
+        "The recursion tree is exponential without memoization",
+        "Python's lru_cache doesn't work with integer arguments"
+      ],
+      "answer": 1,
+      "explanation": "With coin=1 and amount=10^4: dp(10000) calls dp(9999) calls dp(9998) ... calls dp(0). The call stack reaches depth 10,000. Python's default limit is ~1000. This raises RecursionError. Fix: sys.setrecursionlimit(amount + 10) before calling, or use bottom-up DP which has no recursion depth issue."
+    },
+    {
+      "id": 17,
+      "question": "coins=[3,5], amount=7. What is dp[7]?",
+      "options": [
+        "dp[7]=3 — using three 3-coins: 3+3+... wait 3+3=6 not 7. 3+5=8 not 7. 5+5=10. Unreachable. dp[7] stays at sentinel. Return -1.",
+        "dp[7]=2 — two coins",
+        "dp[7]=1 — one coin of 7",
+        "dp[7]=4 — four coins"
+      ],
+      "answer": 0,
+      "explanation": "n=8. dp=[0,8,8,8,8,8,8,8]. curr_amt=1,2: no coin<=1,2. dp[1]=dp[2]=8. curr_amt=3: coin=3: dp[0]+1=1. dp[3]=1. curr_amt=4: coin=3: dp[1]+1=9>8. dp[4]=8 (no valid). curr_amt=5: coin=3: dp[2]+1=9. coin=5: dp[0]+1=1. dp[5]=1. curr_amt=6: coin=3: dp[3]+1=2. dp[6]=2. curr_amt=7: coin=3: dp[4]+1=9. coin=5: dp[2]+1=9. dp[7]=8=sentinel. Return -1. 7 cannot be made from {3,5}."
+    },
+    {
+      "id": 18,
+      "question": "What is the key insight that makes this a DP problem and not a greedy problem?",
+      "options": [
+        "Greedy always works for coin change — take the largest coin that fits",
+        "Greedy (take largest coin first) fails for many coin sets. Example: coins=[1,3,4], amount=6. Greedy: 4+1+1=3 coins. Optimal: 3+3=2 coins. DP considers ALL coin choices at each step and takes the minimum — it doesn't commit to any single choice. Greedy would require the coin set to satisfy the 'canonical' property (which US coins happen to have).",
+        "DP is always preferred over greedy regardless of the problem",
+        "Greedy works but is O(n^2) while DP is O(n)"
+      ],
+      "answer": 1,
+      "explanation": "Greedy (take largest valid coin) is correct for specific coin sets (like [1,5,10,25] US coins) because they satisfy the canonical coin property. For arbitrary coin sets, greedy fails. Coins=[1,3,4], amount=6: greedy takes 4 leaving 2 (two 1s = 3 total). Optimal: 3+3=2 coins. DP avoids this by exploring all possibilities and recording the minimum at each subproblem."
+    },
+    {
+      "id": 19,
+      "question": "The dp array has size n = amount + 1. Why + 1?",
+      "options": [
+        "The +1 accommodates the sentinel value",
+        "We need indices 0 through amount inclusive. That is amount+1 positions. Python list of size amount would have valid indices 0 through amount-1 — missing index amount. The +1 ensures dp[amount] is a valid access.",
+        "The +1 is for the base case dp[0]",
+        "Python requires arrays to be one larger than needed"
+      ],
+      "answer": 1,
+      "explanation": "We need to store dp[0], dp[1], ..., dp[amount] — that is amount+1 values. A list of size amount has indices 0 through amount-1 — dp[amount] would be out of bounds. A list of size amount+1 has indices 0 through amount — dp[amount] is the last valid index and is the answer we return."
+    },
+    {
+      "id": 20,
+      "question": "coins=[1,2,5], amount=5. Without the greedy approach, what makes DP find the optimal answer?",
+      "options": [
+        "DP tries all combinations and picks the shortest",
+        "DP builds from dp[0]=0 upward. dp[5] considers all three coins: coin=1: dp[4]+1, coin=2: dp[3]+1, coin=5: dp[0]+1=1. dp[4] and dp[3] are already optimally computed. dp[5]=min of these. The optimal dp[0]+1=1 (one 5-coin) is found because dp[0] was correctly set to 0.",
+        "DP uses memoization to skip redundant subproblems",
+        "DP sorts the coins to find the best denomination first"
+      ],
+      "answer": 1,
+      "explanation": "The power of DP: by the time we compute dp[5], all smaller subproblems (dp[0] through dp[4]) are already optimally filled. The recurrence just picks the best last coin. dp[5] = min(dp[4]+1, dp[3]+1, dp[0]+1). dp[0]=0, so dp[0]+1=1 wins. DP does not try all combinations — it reuses previously solved subproblem results."
+    },
+    {
+      "id": 21,
+      "question": "What happens if coins contains a denomination larger than amount?",
+      "options": [
+        "An IndexError is raised when the guard is absent",
+        "The 'if coin > curr_amt: continue' guard skips that coin for ALL curr_amt values smaller than coin. For curr_amt values >= coin, it works normally. Large coins are simply never used for small amounts — the guard handles this correctly.",
+        "The algorithm automatically removes coins larger than amount",
+        "Large coins cause dp to remain at the sentinel for all amounts"
+      ],
+      "answer": 1,
+      "explanation": "If coins=[7,10] and amount=5: for all curr_amt from 1 to 5, both coins are > curr_amt. The guard fires every time. dp[1] through dp[5] remain at sentinel n=6. dp[5]=6=n, return -1. Correct — cannot make 5 from coins {7,10}. No preprocessing needed; the guard handles it dynamically."
+    },
+    {
+      "id": 22,
+      "question": "Is it necessary to check 'if dp[curr_amt - coin] != n' before the min update?",
+      "options": [
+        "Yes — using the sentinel in arithmetic gives wrong results",
+        "No — dp[curr_amt-coin] + 1 when dp[curr_amt-coin]=n gives n+1. min(dp[curr_amt], n+1) = min(n, n+1) = n. The sentinel value is preserved. No explicit check needed.",
+        "Yes — sentinel + 1 would cause integer overflow",
+        "It depends on whether float('inf') is used as sentinel"
+      ],
+      "answer": 1,
+      "explanation": "n = amount + 1. n + 1 = amount + 2 > n. min(n, n+1) = n. So if dp[curr_amt-coin] is the sentinel (unreachable), dp[curr_amt-coin]+1 = n+1, and min(current_dp[curr_amt], n+1) keeps the current value unchanged. The arithmetic works out — no extra guard needed. This is a key property of using n (an integer) as sentinel vs float('inf') (where inf+1 = inf, also fine)."
+    },
+    {
+      "id": 23,
+      "question": "For the BFS approach, why is a visited set necessary?",
+      "options": [
+        "To avoid exploring the same coin denomination twice",
+        "Without visited, amounts already reachable in k coins would be re-queued when reachable via a different k+1 coin path. BFS would process them again, giving wrong counts and potentially infinite loops. visited prevents re-processing amounts already found with fewer coins.",
+        "The visited set stores the coins used in the optimal path",
+        "Python's deque requires a visited set for correct popleft behavior"
+      ],
+      "answer": 1,
+      "explanation": "BFS finds shortest paths by never revisiting nodes. If amount x was reachable in 2 coins, re-adding it to the queue at 3 coins would be wasteful and wrong. visited = set() tracks all amounts already discovered. When a new amount is generated, only add to queue if not in visited. This ensures each amount is processed at most once (first time = fewest coins = optimal)."
+    },
+    {
+      "id": 24,
+      "question": "coins=[1,2,5], amount=100. Which is faster: BFS or bottom-up DP?",
+      "options": [
+        "BFS is always faster — it finds the answer without filling the whole table",
+        "Both are O(amount * len(coins)) = O(100 * 3) = O(300). In practice, DP is faster due to array locality (cache-friendly sequential access) vs BFS overhead (deque, set operations, object creation). For very large amounts BFS may process fewer nodes but both are theoretically the same.",
+        "Bottom-up DP is O(amount^2); BFS is O(amount)",
+        "BFS is faster when the answer uses few coins; DP is faster otherwise"
+      ],
+      "answer": 1,
+      "explanation": "Asymptotically both are O(amount * len(coins)). In practice, bottom-up DP has better cache locality (sequential array access), lower constant factors (simple array indexing vs deque + set operations), and no overhead from visited set hash operations. BFS theoretically could exit early when it first reaches 'amount', but with efficient coins, DP fills only a few array positions anyway. DP is generally preferred."
+    },
+    {
+      "id": 25,
+      "question": "An interviewer asks: 'Can you explain why this DP solution is correct — i.e., why does the optimal substructure hold?'",
+      "options": [
+        "It is correct because we try all coins at each step",
+        "Optimal substructure holds because: an optimal solution to making amount A must include an optimal solution to making A - c for the last coin c used. If a cheaper way existed to make A - c, we could replace that sub-solution and get a cheaper solution to A — contradiction. Therefore, dp[A] = min over all coins c of (dp[A-c] + 1) correctly builds optimal answers from optimal sub-answers.",
+        "It is correct because of the base case dp[0] = 0",
+        "The sentinel ensures only valid answers are returned"
+      ],
+      "answer": 1,
+      "explanation": "Optimal substructure: suppose the optimal solution to amount A uses coins [c1, c2, ..., ck] where ck is the last coin. Then [c1, ..., c(k-1)] is an optimal solution to A - ck. Proof by contradiction: if a better solution to A - ck existed (say j < k-1 coins), then [those j coins, ck] would solve A in j+1 < k coins — better than optimal, a contradiction. Therefore dp[A] = min_c(dp[A-c] + 1) is correct. This is the formal basis for all DP algorithms."
+    }
+  ]
+}
