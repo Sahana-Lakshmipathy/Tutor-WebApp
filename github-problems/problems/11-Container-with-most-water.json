@@ -1,0 +1,433 @@
+{
+  "id": "11",
+  "title": "Container With Most Water",
+  "difficulty": "Medium",
+  "tags": ["Array", "Two Pointers", "Greedy"],
+  "description": "You are given an integer array height of length n. There are n vertical lines drawn such that the two endpoints of the i-th line are (i, 0) and (i, height[i]). Find two lines that together with the x-axis form a container such that the container contains the most water. Return the maximum amount of water a container can store. You may not slant the container.",
+  "examples": [
+    {
+      "input": "height = [1,8,6,2,5,4,8,3,7]",
+      "output": "49",
+      "explanation": "Left line at index 1 (height 8) and right line at index 8 (height 7). Area = (8-1) * min(8,7) = 7 * 7 = 49."
+    },
+    {
+      "input": "height = [1,1]",
+      "output": "1",
+      "explanation": "Only two lines. Area = (1-0) * min(1,1) = 1."
+    },
+    {
+      "input": "height = [4,3,2,1,4]",
+      "output": "16",
+      "explanation": "Left index 0 (height 4) and right index 4 (height 4). Area = 4 * 4 = 16."
+    },
+    {
+      "input": "height = [1,2,1]",
+      "output": "2",
+      "explanation": "Indices 0 and 2. Area = 2 * min(1,1) = 2."
+    }
+  ],
+  "constraints": [
+    "n == height.length",
+    "2 <= n <= 10^5",
+    "0 <= height[i] <= 10^4"
+  ],
+  "intuition": "Start with the widest possible container — left at index 0 and right at index n-1. This gives the maximum width. Now ask: can we do better by narrowing the width? The area is width * min(left_height, right_height). Narrowing always decreases width by 1. The only hope for a larger area after narrowing is to get a taller min height. The shorter of the two current walls is the bottleneck — it caps the water level. If we move the taller wall inward, the width decreases AND the min height can only stay the same or decrease (because the shorter wall is still there, still capping the level). We guaranteed cannot do better. So always move the shorter wall inward — it is the only wall that has any chance of producing a taller min height on the next step. This greedy choice is safe: we never discard a pair that could be the answer.",
+  "why_move_shorter": {
+    "key_argument": "Suppose height[left] < height[right]. The water level is capped at height[left]. If we move right inward (right -= 1), the new area = (right-1-left) * min(height[left], height[new_right]). Since width decreased AND height[left] still caps the min, area can only stay same or decrease. We gain nothing. If we move left inward (left += 1), the width still decreases but now min(height[new_left], height[right]) could be larger than height[left] — the bottleneck changes. Moving the taller wall is provably useless; moving the shorter wall gives the only chance of improvement.",
+    "proof_sketch": "Fix the taller wall. All containers with the shorter wall on one side and any other wall on the other side have area <= current area (because min is still capped by the shorter wall, and width is smaller). So the shorter wall's best possible container has already been seen. We can safely discard it and move inward."
+  },
+  "area_formula": "area = (right - left) * min(height[left], height[right]). Width = right - left (distance between the two line indices). Height = min(height[left], height[right]) — water spills over the shorter wall.",
+  "why_not_max": "Area uses min, not max, of the two heights. Water fills up to the level of the SHORTER wall — it spills over the top of the shorter wall if the taller wall is higher. The taller wall does not matter beyond determining the shorter wall.",
+  "tie_breaking": "When height[left] == height[right] (the else branch fires, right -= 1), either pointer could move — both walls are equal height. Moving either is safe. The code moves right. Alternatively, move both inward — also correct. The tie case cannot be the unique answer because any equal-height pair has the same min, and a wider equal pair would have been seen earlier.",
+  "approach": {
+    "name": "Two pointers converging from both ends",
+    "steps": [
+      "Initialize left = 0, right = n-1, max_area = 0.",
+      "While left < right:",
+      "  Compute area = (right - left) * min(height[left], height[right]).",
+      "  Update max_area = max(max_area, area).",
+      "  If height[left] < height[right]: move left inward (left += 1).",
+      "  Else: move right inward (right -= 1).",
+      "Return max_area."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "from typing import List\n\nclass Solution:\n    def maxArea(self, height: List[int]) -> int:\n        max_area = 0\n        left = 0\n        right = len(height) - 1\n\n        while left < right:\n            area = (right - left) * min(height[left], height[right])\n            max_area = max(area, max_area)\n\n            # always move the shorter wall — the taller wall\n            # cannot improve the current min if we move it inward\n            if height[left] < height[right]:\n                left += 1\n            else:  # height[left] >= height[right] (includes tie)\n                right -= 1\n\n        return max_area\n\n        # Time Complexity:  O(n) — each pointer moves inward, together covering n-1 steps\n        # Space Complexity: O(1) — no extra data structures"
+  },
+  "complexity": {
+    "time": "O(n) — left starts at 0 and only moves right; right starts at n-1 and only moves left. Together they take exactly n-1 steps total before left >= right. Each step is O(1).",
+    "space": "O(1) — three integer variables. No extra arrays or maps."
+  },
+  "full_trace": {
+    "input": "height = [1,8,6,2,5,4,8,3,7]",
+    "steps": [
+      "left=0,right=8: area=(8-0)*min(1,7)=8*1=8. max_area=8. h[0]=1<h[8]=7 -> left=1.",
+      "left=1,right=8: area=(8-1)*min(8,7)=7*7=49. max_area=49. h[1]=8>h[8]=7 -> right=7.",
+      "left=1,right=7: area=(7-1)*min(8,3)=6*3=18. max_area=49. h[1]=8>h[7]=3 -> right=6.",
+      "left=1,right=6: area=(6-1)*min(8,8)=5*8=40. max_area=49. h[1]=8>=h[6]=8 (tie) -> right=5.",
+      "left=1,right=5: area=(5-1)*min(8,4)=4*4=16. max_area=49. h[1]=8>h[5]=4 -> right=4.",
+      "left=1,right=4: area=(4-1)*min(8,5)=3*5=15. max_area=49. h[1]=8>h[4]=5 -> right=3.",
+      "left=1,right=3: area=(3-1)*min(8,2)=2*2=4. max_area=49. h[1]=8>h[3]=2 -> right=2.",
+      "left=1,right=2: area=(2-1)*min(8,6)=1*6=6. max_area=49. h[1]=8>h[2]=6 -> right=1.",
+      "left=1,right=1: left < right is False. Exit.",
+      "Return 49."
+    ]
+  },
+  "brute_force": {
+    "description": "Check every pair (i, j) where i < j. Compute area for each. Track maximum.",
+    "code": "def maxArea(self, height):\n    max_area = 0\n    n = len(height)\n    for i in range(n):\n        for j in range(i+1, n):\n            area = (j - i) * min(height[i], height[j])\n            max_area = max(max_area, area)\n    return max_area",
+    "time": "O(n^2)",
+    "space": "O(1)",
+    "why_too_slow": "For n=10^5: 10^10 operations. Two-pointer reduces this to n-1 steps = O(n)."
+  },
+  "common_mistakes": [
+    {
+      "mistake": "Moving the taller wall instead of the shorter wall",
+      "consequence": "Would never improve the min height (the bottleneck is already the shorter wall). Can miss the optimal pair."
+    },
+    {
+      "mistake": "Using max(height[left], height[right]) instead of min for the height",
+      "consequence": "Water cannot fill above the shorter wall. Using max gives an area that is physically impossible — water would spill out."
+    },
+    {
+      "mistake": "Computing area as (right - left + 1) * min(...)",
+      "consequence": "Width is the gap between lines, not the count of lines. For lines at indices 1 and 5: width = 5-1=4, not 5. The +1 overcounts."
+    },
+    {
+      "mistake": "Not updating max_area before moving pointers",
+      "consequence": "The current pair is discarded without being considered. Equivalent to starting from range(1, n-1) — missing the widest pairs."
+    },
+    {
+      "mistake": "Moving both pointers when heights are equal",
+      "consequence": "Skips pairs that might be valid. The tie case should move at least one pointer. Moving one (either) is sufficient."
+    }
+  ],
+  "python_gotchas": [
+    "min(height[left], height[right]) not max — the shorter wall caps the water level.",
+    "right = len(height) - 1 not len(height). len(height) is an out-of-bounds index. Always n-1 for the last valid index.",
+    "while left < right not while left <= right. When left == right, both pointers reference the same line — a single line forms no container. The loop must terminate.",
+    "The else branch covers BOTH height[left] > height[right] AND height[left] == height[right]. The tie case (>=) correctly moves right. Moving left on tie would also be correct.",
+    "The commented-out print statements should be removed before submission — they do not affect correctness."
+  ],
+  "related_problems": [
+    {
+      "title": "Trapping Rain Water (LC 42)",
+      "relation": "Harder version — water is trapped between ALL bars, not just two. Uses the same two-pointer intuition extended: maintain running max from left and right, water at each index = min(left_max, right_max) - height[i]. This problem (LC 11) is the recommended warm-up before LC 42."
+    },
+    {
+      "title": "Two Sum (LC 1)",
+      "relation": "Same two-pointer convergence pattern on a sorted array variant. Converge from both ends, make a greedy decision each step based on current values."
+    },
+    {
+      "title": "3Sum (LC 15)",
+      "relation": "Also uses two pointers converging from both ends as the inner loop after fixing one element. Same pointer movement logic: move based on whether current sum is too large or too small."
+    },
+    {
+      "title": "Largest Rectangle in Histogram (LC 84)",
+      "relation": "Also involves finding the maximum area formed by vertical bars. Uses a monotonic stack instead of two pointers. More complex but shares the 'area bounded by shorter bar' insight."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "Why do we always move the shorter wall inward and never the taller wall?",
+      "options": [
+        "Moving the taller wall is slower and affects time complexity",
+        "If we move the taller wall inward, the width decreases AND the min height is still capped by the shorter wall (which hasn't moved). Area can only decrease or stay the same. Moving the shorter wall gives the only chance for min height to increase. Moving the taller wall guarantees we cannot improve.",
+        "The shorter wall contains less water so it should be replaced first",
+        "Moving either wall is equally valid — the choice is arbitrary"
+      ],
+      "answer": 1,
+      "explanation": "Suppose height[left] < height[right]. Water level = height[left]. If we move right inward: new area = (right-1-left) * min(height[left], height[new_right]). Width decreased. min is still <= height[left] (shorter wall still there). Area can only be <= current. If we move left: min changes — could be larger. Moving the taller wall is proven useless. Moving the shorter wall is the greedy optimal choice."
+    },
+    {
+      "id": 2,
+      "question": "Why is area computed as (right - left) * min(...) and not (right - left + 1) * min(...)?",
+      "options": [
+        "(right - left + 1) would include the wall thickness in the width",
+        "Width is the horizontal distance between two lines at indices left and right. That distance is right - left. The +1 would count the number of lines between them (inclusive), not the gap. For lines at indices 2 and 5: gap = 3, line count = 4.",
+        "The formula uses 0-based indexing which requires subtracting 1",
+        "min() already accounts for the +1 factor"
+      ],
+      "answer": 1,
+      "explanation": "Consider lines at index 0 and index 1 (adjacent lines). The width of the container between them is 1 unit (they are 1 unit apart). right - left = 1-0 = 1. Correct. right - left + 1 = 2. Wrong. The formula (right - left) computes horizontal distance, not line count."
+    },
+    {
+      "id": 3,
+      "question": "What is the time complexity and why?",
+      "options": [
+        "O(n^2) — two nested loops implied by checking pairs",
+        "O(n log n) — binary search used to find optimal wall",
+        "O(n) — left only moves right and right only moves left. Together they take exactly n-1 steps before crossing. Each step is O(1).",
+        "O(n) only in best case; O(n^2) worst case"
+      ],
+      "answer": 2,
+      "explanation": "left starts at 0 and increments. right starts at n-1 and decrements. At each while loop iteration, exactly one pointer moves by 1. The loop runs until left >= right — at most n-1 iterations. No iteration does more than O(1) work (two array accesses, one min, one max, one comparison). Total: O(n)."
+    },
+    {
+      "id": 4,
+      "question": "height = [1,8,6,2,5,4,8,3,7]. At step 2 (left=1, right=8), what area is computed and why is right decremented?",
+      "options": [
+        "area = 7*7 = 49. right decremented because height[1]=8 > height[8]=7 (height[left] >= height[right]).",
+        "area = 7*8 = 56. left incremented because height[8] is smaller.",
+        "area = 8*7 = 56. No pointer moves — max found.",
+        "area = 7*1 = 7. left incremented."
+      ],
+      "answer": 0,
+      "explanation": "left=1, right=8. width = 8-1 = 7. height[1]=8, height[8]=7. min(8,7)=7. area=7*7=49. max_area=49. height[left]=8 >= height[right]=7 -> else branch -> right -= 1 -> right=7."
+    },
+    {
+      "id": 5,
+      "question": "What happens in the tie case when height[left] == height[right]?",
+      "options": [
+        "The algorithm errors — equal heights are not handled",
+        "The else branch fires (height[left] >= height[right] covers ==), so right -= 1. This is safe: when heights are equal, both walls are the bottleneck. Moving either inward is valid. Moving left would also be correct. Moving both would also work.",
+        "Both pointers move simultaneously",
+        "max_area is returned immediately when heights are equal"
+      ],
+      "answer": 1,
+      "explanation": "The condition 'if height[left] < height[right]' is strictly less than. For ties, the else branch fires, decrementing right. When heights are equal, the min height is the same for both walls. Any container formed with the current shorter (equal) wall and a wall further inward has smaller width and can only have equal or smaller min height — so we miss nothing by discarding the current right wall."
+    },
+    {
+      "id": 6,
+      "question": "Why does the loop condition use 'left < right' and not 'left <= right'?",
+      "options": [
+        "left <= right would access an out-of-bounds index",
+        "When left == right, both pointers point to the same line. A single vertical line cannot form a container — you need two distinct lines. The loop must stop before left and right converge to the same index.",
+        "left <= right would cause the algorithm to run twice",
+        "left == right only happens for odd-length arrays"
+      ],
+      "answer": 1,
+      "explanation": "A container requires two distinct lines. When left == right, they point to the same index — no width, no container. left < right ensures we only compute areas for valid pairs where left != right (width > 0). Using <= would compute area = 0 (width = right - left = 0) on the final iteration — harmless but unnecessary."
+    },
+    {
+      "id": 7,
+      "question": "height = [4,3,2,1,4]. What is the optimal answer and which pair produces it?",
+      "options": [
+        "Area = 12: indices 0 and 3, width=3, min(4,1)=1, area=3.",
+        "Area = 16: indices 0 and 4, width=4, min(4,4)=4, area=16.",
+        "Area = 9: indices 0 and 1, width=1, min(4,3)=3, area=3.",
+        "Area = 4: just the tallest bar"
+      ],
+      "answer": 1,
+      "explanation": "The widest pair: left=0 (height 4), right=4 (height 4). Width=4, min=4, area=16. Trace: step 1: area=4*min(4,4)=16, max=16, tie -> right=3. step 2: area=3*min(4,1)=3, right=2. step 3: area=2*min(4,2)=4, right=1. step 4: area=1*min(4,3)=3, right=0. left=0=right=0: exit. Return 16."
+    },
+    {
+      "id": 8,
+      "question": "Can the two-pointer solution miss the optimal answer? Prove it cannot.",
+      "options": [
+        "It can miss — some pairs are never directly evaluated",
+        "It cannot miss. Proof: suppose the optimal pair is (i, j) with i < j. WLOG height[i] <= height[j]. When left=i, right is at some r >= j. If r > j: height[r] <= height[i] would have kept right inching left until right=j; height[r] > height[i] means min is still height[i], and pair (i, r) with larger width was already evaluated. Either way, pair (i, j) or something better has been seen by the time left moves past i.",
+        "It misses pairs when the array is sorted in descending order",
+        "It misses optimal pairs when multiple pairs have the same area"
+      ],
+      "answer": 1,
+      "explanation": "Formal proof by contradiction: let (i,j) be optimal with height[i] <= height[j]. At some point left=i and right >= j. If right > j: height[right] > height[i] would keep right moving left (since height[left]=height[i] < height[right]). right eventually reaches j. At (i,j): pair evaluated, area recorded. If height[right] <= height[i] at some r>j: pair (i,r) has width > (j-i) and min >= height[r]... actually min = height[i] for both. Area (i,r) = (r-i)*height[i] > (j-i)*height[i] = area(i,j). Contradiction — (i,j) is not optimal. So the optimal pair is always evaluated."
+    },
+    {
+      "id": 9,
+      "question": "height = [1,1]. Trace the algorithm.",
+      "options": [
+        "Returns 0 — single step, no container formed",
+        "left=0, right=1. area=(1-0)*min(1,1)=1. max_area=1. height[0]=1>=height[1]=1 -> right=0. left=0=right=0: exit. Return 1.",
+        "Returns 2 — two bars of height 1",
+        "Returns -1 — array too small"
+      ],
+      "answer": 1,
+      "explanation": "Minimum valid input: two elements. left=0, right=1. width=1, min(1,1)=1. area=1. max_area=1. Tie: else branch, right=0. Now left(0) < right(0) is False. Loop exits. Return 1."
+    },
+    {
+      "id": 10,
+      "question": "Is it possible that moving both pointers simultaneously when heights are equal could miss the optimal answer?",
+      "options": [
+        "Yes — moving both skips a valid candidate pair",
+        "No — when height[left] == height[right], any pair with one of these walls and an inner wall has smaller width and min height <= current min. The pair (left, right) with equal heights has the largest possible width for this min height combination. Moving both inward safely discards both walls.",
+        "Yes — you might miss a case where one inner bar is taller than both outer bars",
+        "It depends on whether the inner bars are sorted"
+      ],
+      "answer": 1,
+      "explanation": "When height[left] == height[right] = h, min = h. Any pair (left', right') with left < left' or right' < right has smaller width. min(height[left'], height[right']) <= max(height[left'], height[right']). Even if both inner bars are taller than h, the min is still capped at h or could be smaller. The pair (left, right) is the best possible with min height h and this maximum width. Moving both is safe."
+    },
+    {
+      "id": 11,
+      "question": "Why is this problem classified as 'greedy' in addition to 'two pointers'?",
+      "options": [
+        "The algorithm sorts the array greedily before processing",
+        "At each step, we make a locally optimal choice — move the shorter wall — without reconsidering. This greedy choice is globally optimal because: moving the taller wall provably cannot improve the answer. The greedy property holds (optimal substructure + greedy choice safety), so the algorithm is both two-pointer and greedy.",
+        "Greedy means the algorithm always returns the largest possible value",
+        "The problem uses max() which is inherently greedy"
+      ],
+      "answer": 1,
+      "explanation": "Greedy algorithms make locally optimal choices that lead to a globally optimal solution. Here: at each step, moving the shorter wall is the only choice that COULD improve the answer. Moving the taller wall is provably suboptimal. This is the greedy choice. It is safe (never discards the optimal pair) and leads to the global optimum. Two-pointer is the implementation mechanism; greedy is the reasoning."
+    },
+    {
+      "id": 12,
+      "question": "height = [2,3,4,5,18,17,6]. What is the maximum area?",
+      "options": [
+        "17 — the two tallest bars",
+        "17*2 = 34... let me think. Indices 4 and 5: width=1, min=17, area=17. Indices 0 and 6: width=6, min=2, area=12. Indices 1 and 6: width=5, min=3, area=15. Indices 2 and 5: width=3, min=4, area=12. Indices 3 and 5: width=2, min=5, area=10. Best: indices 4 and 6: width=2, min=6, area=12. Or indices 1 and 5: width=4, min=3, area=12. Actually indices 4 and 5: area=17. Or wait — index 4=18, index 5=17. Area=1*17=17. Index 0 (h=2) to index 6 (h=6): area=6*2=12. Answer=17.",
+        "Answer is 17 (indices 4 and 5)",
+        "Answer is 18 — the tallest bar"
+      ],
+      "answer": 2,
+      "explanation": "Trace: left=0(h=2),right=6(h=6): area=6*2=12. h[0]<h[6]->left=1. left=1(h=3),right=6(h=6): area=5*3=15. left=2. left=2(h=4),right=6(h=6): area=4*4=16. left=3. left=3(h=5),right=6(h=6): area=3*5=15. left=4. left=4(h=18),right=6(h=6): area=2*6=12. h[4]>h[6]->right=5. left=4(h=18),right=5(h=17): area=1*17=17. h[4]>h[5]->right=4. left=4=right=4: exit. max_area=max(12,15,16,15,12,17)=17."
+    },
+    {
+      "id": 13,
+      "question": "How does this problem relate to Trapping Rain Water (LC 42)?",
+      "options": [
+        "They are the same problem with different variable names",
+        "Both involve water and vertical bars. LC 11: find the two bars that form the largest container (one pair). LC 42: compute total water trapped across ALL bars (every bar contributes). LC 11 uses pure two-pointer convergence. LC 42 also uses two pointers but tracks running max from each side and sums water at each position. LC 11 is the recommended prerequisite for LC 42.",
+        "LC 42 is easier — it just uses max instead of min",
+        "They have different time complexities — LC 11 is O(n log n)"
+      ],
+      "answer": 1,
+      "explanation": "LC 11: single container, two walls, maximize area = width * min(h_left, h_right). O(n) two-pointer. LC 42: every bar is a potential wall, water trapped at index i = min(max_left, max_right) - h[i]. Sum over all indices. Both use the 'water level = shorter wall' insight. LC 42 is strictly harder — it requires computing left_max and right_max arrays (or the two-pointer variant) for every position."
+    },
+    {
+      "id": 14,
+      "question": "height = [1,2,3,4,5] (strictly increasing). What does the algorithm do?",
+      "options": [
+        "Always moves left because left is always shorter",
+        "Always moves left (height[left] < height[right] since array is strictly increasing). left goes from 0 to n-2, right stays at n-1 until left catches up. Evaluates pairs (0,4),(1,4),(2,4),(3,4). Max area = max(4*1, 3*2, 2*3, 1*4) = max(4,6,6,4) = 6.",
+        "Always moves right because right is always at the tallest bar",
+        "Terminates immediately with area 5"
+      ],
+      "answer": 1,
+      "explanation": "Strictly increasing: height[left] < height[right] always (left is always the shorter wall). left increments every step. Pairs evaluated: (0,4)=4*1=4, (1,4)=3*2=6, (2,4)=2*3=6, (3,4)=1*4=4. max=6. The algorithm correctly identifies (1,4) and (2,4) as tied for best."
+    },
+    {
+      "id": 15,
+      "question": "What would happen if you used max(height[left], height[right]) instead of min?",
+      "options": [
+        "The result would be doubled",
+        "It would compute a physically impossible area — water cannot fill above the shorter wall without spilling. The area formula would overestimate. For height=[1,10], max gives area=1*10=10 but only 1 unit of water fits before spilling over the height-1 wall. Correct is min: 1*1=1.",
+        "The result would be correct for symmetric arrays",
+        "max and min give the same result when heights are equal"
+      ],
+      "answer": 1,
+      "explanation": "Water fills to the level of the SHORTER wall (min). If the left wall is height 1 and right wall is height 10, water fills to height 1 — any more spills over the left wall. Using max(1,10)=10 would claim 10 units of water height, which is physically impossible. min is the correct formula. This is also why the problem says 'you may not slant the container' — the water level is horizontal at the shorter wall's height."
+    },
+    {
+      "id": 16,
+      "question": "height = [10,1,1,1,10]. What is the answer, and does the greedy approach find it?",
+      "options": [
+        "Answer = 4. Greedy misses it.",
+        "Answer = 40 (indices 0 and 4): width=4, min=10. Greedy: left=0(10),right=4(10), area=4*10=40. Tie -> right=3. left=0(10),right=3(1), area=3*1=3. h[0]>h[3]->right=2. ... Eventually returns 40.",
+        "Answer = 10: one tall bar",
+        "Answer = 4: indices 1 and 4"
+      ],
+      "answer": 1,
+      "explanation": "Optimal: left=0, right=4. area=4*min(10,10)=40. Trace: step 1: area=(4-0)*min(10,10)=40. max=40. Tie: right=3. step 2: area=(3-0)*min(10,1)=3. max=40. h[0]>h[3]->right=2. step 3: area=2*min(10,1)=2. right=1. step 4: area=1*min(10,1)=1. right=0. Exit. Return 40. The greedy approach correctly finds the optimal at the very first step."
+    },
+    {
+      "id": 17,
+      "question": "What is the space complexity and can it be reduced further?",
+      "options": [
+        "O(n) — the algorithm scans the whole array",
+        "O(1) — only three integer variables (left, right, max_area). Already optimal. Cannot be reduced further without changing the problem — you must track the two pointer positions and the running maximum.",
+        "O(log n) — implicit recursion stack",
+        "O(n) and can be reduced to O(1) by sorting first"
+      ],
+      "answer": 1,
+      "explanation": "The algorithm uses exactly three integers: left, right, max_area. No arrays, no maps, no recursion. O(1) auxiliary space — as optimal as possible. The input array is read-only and not counted. This is one of the most space-efficient solutions to any array problem."
+    },
+    {
+      "id": 18,
+      "question": "height = [3,1,2,4,0,1,3,2]. What is the maximum area?",
+      "options": [
+        "12 — indices 0 and 6: width=6, min(3,3)=3, area=18. Wait.",
+        "18 — indices 0 and 6: width=6, min(3,3)=3, area=18.",
+        "21 — three bars",
+        "16 — indices 3 and 6"
+      ],
+      "answer": 1,
+      "explanation": "Checking candidate: indices 0(h=3) and 6(h=3): area=6*3=18. Indices 0 and 7(h=2): area=7*2=14. Indices 3(h=4) and 6(h=3): area=3*3=9. Indices 0 and 3: area=3*3=9. Trace confirms max=18 at (0,6). The two-pointer would find this: starts at (0,7)=14, h[0]>h[7]->right=6. (0,6)=18, tie->right=5. Continues finding smaller areas. Returns 18."
+    },
+    {
+      "id": 19,
+      "question": "Why does the brute force O(n^2) solution fail for n = 10^5?",
+      "options": [
+        "It uses too much memory — O(n^2) space",
+        "O(n^2) operations = (10^5)^2 = 10^10 operations. At ~10^8-10^9 operations per second for Python, this takes 10-100 seconds — far beyond typical time limits. The two-pointer O(n) solution does 10^5 operations in milliseconds.",
+        "The brute force produces integer overflow for large heights",
+        "Python's nested loops are O(n^3) not O(n^2)"
+      ],
+      "answer": 1,
+      "explanation": "10^10 operations at Python's ~10^8 ops/second = ~100 seconds. LeetCode's time limit is typically 1-2 seconds. The O(n) two-pointer solution does 10^5 operations in ~1ms. The gap: O(n^2) vs O(n) means the two-pointer is 100,000x faster for n=10^5."
+    },
+    {
+      "id": 20,
+      "question": "If you move the taller wall when height[left] < height[right], what goes wrong with input [1, 8, 6, 2, 5, 4, 8, 3, 7]?",
+      "options": [
+        "Nothing — both moves eventually evaluate all good pairs",
+        "Moving right (taller) at step 1 (left=0,h=1 < right=8,h=7): right=7. Now pair (0,7)=7*min(1,3)=7. left incremented to 1. (1,7)=6*min(8,3)=18. left=2 (8>3). (2,7)=5*min(6,3)=15. left=3(8>3... wait h[2]=6<h[7]=3? No h[2]=6>h[7]=3, left stays... this gets complex but the key is the optimal (1,8)=49 can be MISSED because by moving the taller wall first we may skip directly past the optimal pair.",
+        "The algorithm would return 56 — an overestimate",
+        "It returns the correct answer but takes O(n^2) time"
+      ],
+      "answer": 1,
+      "explanation": "Moving the wrong pointer can miss the optimal pair. For [1,8,6,2,5,4,8,3,7]: optimal is (1,8)=49. If at step 1 (left=0,right=8, h[0]=1<h[8]=7) we moved right instead of left: right goes to 7. We never directly evaluate (left=1,right=8). When left later reaches 1, right might have moved past 8. The taller-wall move provably cannot find better solutions and may skip optimal ones."
+    },
+    {
+      "id": 21,
+      "question": "What invariant does the two-pointer approach maintain?",
+      "options": [
+        "The area always increases as pointers converge",
+        "At each step, the optimal container for the current 'shorter' wall has already been found (or is being found now). By discarding the shorter wall and moving inward, we ensure we never discard a pair that could be the global optimum.",
+        "left always points to the tallest bar seen so far",
+        "The product (right-left) always equals n divided by the number of steps taken"
+      ],
+      "answer": 1,
+      "explanation": "The invariant: when we move the shorter wall (say left), all pairs containing the old left with any right' where right' <= current right have been implicitly proven sub-optimal (they have smaller width and the same or smaller min). The optimal pair has NOT been discarded. This invariant is maintained at every step, ensuring the global optimum is found."
+    },
+    {
+      "id": 22,
+      "question": "height = [0, 0]. What does the algorithm return?",
+      "options": [
+        "0 — area = (1-0) * min(0,0) = 0. max_area stays 0. Return 0.",
+        "-1 — no valid container",
+        "1 — the width is 1",
+        "An error due to min(0,0)"
+      ],
+      "answer": 0,
+      "explanation": "left=0, right=1. area=(1-0)*min(0,0)=1*0=0. max_area=max(0,0)=0. Tie (0>=0): right=0. left=0=right=0: exit. Return 0. Two walls of height 0 hold no water. Correct."
+    },
+    {
+      "id": 23,
+      "question": "The problem says 'you may not slant the container'. What does this constraint rule out?",
+      "options": [
+        "Using bars of different heights",
+        "It rules out tilting the container to hold more water. If you could slant, you might fit more water by angling the shorter wall outward. The 'no slant' constraint means the water surface is always horizontal, capping at the shorter wall's height. This is why min is used in the formula.",
+        "Using more than two bars to form the container",
+        "Containers where both walls have the same height"
+      ],
+      "answer": 1,
+      "explanation": "The no-slant constraint means water fills horizontally. The effective height of the container is strictly min(height[left], height[right]) — water cannot rise above the shorter wall without spilling. If slanting were allowed, the geometry would change completely. This constraint is what makes min(h_left, h_right) the correct height formula."
+    },
+    {
+      "id": 24,
+      "question": "height = [1,8,6,2,5,4,8,3,7]. At step 4 (left=1, right=5), what is computed?",
+      "options": [
+        "area = 4 * min(8,4) = 16. max_area stays 49. height[1]=8 > height[5]=4 -> right=4.",
+        "area = 4 * min(8,4) = 16. max_area=16. left incremented.",
+        "area = 5 * min(8,4) = 20. max_area=49.",
+        "area = 4 * min(8,8) = 32."
+      ],
+      "answer": 0,
+      "explanation": "After step 3 (left=1,right=6): area=5*8=40, h[1]=8>=h[6]=8 (tie)->right=5. Step 4: left=1(h=8), right=5(h=4). width=5-1=4. min(8,4)=4. area=4*4=16. max_area=max(49,16)=49. height[left]=8 > height[right]=4 -> right=4."
+    },
+    {
+      "id": 25,
+      "question": "An interviewer asks: 'How do you know the two-pointer approach doesn't miss any pair?' What is the best answer?",
+      "options": [
+        "I tested it on many examples and it always works",
+        "By induction: consider the optimal pair (i,j). WLOG height[i] <= height[j]. I claim when left=i, right will be >= j at some point. Before left reaches i, right only moves when height[left] >= height[right] — meaning the discarded right wall was not taller than the current left wall. Since height[i] <= height[j], any right wall discarded before left reaches i was <= height[i] <= height[j] — those pairs had area <= (j-i)*height[i] = area(i,j). So nothing better was missed. When left=i, right will be at j or higher and pair (i,j) will be evaluated.",
+        "The two pointers cover all O(n) pairs in O(n) time",
+        "If the algorithm is O(n), it must be correct"
+      ],
+      "answer": 1,
+      "explanation": "This is the formal correctness argument. The key: every discarded wall (when right moves left past j) was discarded because height[right] <= height[left at that time]. Since height[i] (the optimal left wall) is eventually reached and height[j] >= height[i], right cannot have moved past j before left=i. The pair (i,j) is guaranteed to be evaluated. This proof by contradiction on the optimal pair is the standard interview answer for greedy two-pointer correctness."
+    }
+  ]
+}
