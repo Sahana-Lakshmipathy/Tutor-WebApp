@@ -1,0 +1,452 @@
+{
+  "id": "153",
+  "title": "Find Minimum in Rotated Sorted Array",
+  "difficulty": "Medium",
+  "tags": ["Array", "Binary Search"],
+  "description": "Suppose an array of length n sorted in ascending order is rotated between 1 and n times. For example, the array nums = [0,1,2,4,5,6,7] might become [4,5,6,7,0,1,2] if it was rotated 4 times, or [0,1,2,4,5,6,7] if it was rotated 7 times (or 0 times). Given the sorted rotated array nums of unique elements, return the minimum element of this array. You must write an algorithm that runs in O(log n) time.",
+  "examples": [
+    {
+      "input": "nums = [3,4,5,1,2]",
+      "output": "1",
+      "explanation": "The original array was [1,2,3,4,5] rotated 3 times. Minimum is 1 at index 3."
+    },
+    {
+      "input": "nums = [4,5,6,7,0,1,2]",
+      "output": "0",
+      "explanation": "Original [0,1,2,4,5,6,7] rotated 4 times. Minimum is 0 at index 4."
+    },
+    {
+      "input": "nums = [11,13,15,17]",
+      "output": "11",
+      "explanation": "Array was not rotated (or rotated n times). Minimum is the first element."
+    },
+    {
+      "input": "nums = [2,1]",
+      "output": "1",
+      "explanation": "Array [1,2] rotated once. Minimum is 1 at index 1."
+    }
+  ],
+  "constraints": [
+    "n == nums.length",
+    "1 <= n <= 5000",
+    "−5000 <= nums[i] <= 5000",
+    "All integers in nums are UNIQUE",
+    "nums is sorted and rotated between 1 and n times",
+    "Must run in O(log n) time"
+  ],
+  "intuition": "A rotated sorted array has one key property: it consists of two sorted subarrays, and the minimum is the pivot point where the larger values end and the smaller values begin. The array looks like: [big, big, big, ..., small, small, small]. The minimum is at the join point. Binary search exploits the structure: compare nums[mid] with nums[right]. If nums[mid] > nums[right], the pivot (minimum) must be in the right half — the left half is entirely above the right half, so the minimum cannot be there. If nums[mid] <= nums[right], the right half is properly sorted and mid itself could be the minimum or the minimum is in the left half. Narrow the search space until left == right — that index holds the minimum.",
+  "key_insight": "Compare with nums[right], NOT nums[left]. Comparing mid with right tells us which half contains the minimum definitively. Comparing mid with left is ambiguous when the array might not be rotated at all (left could be the minimum).",
+  "why_compare_right_not_left": {
+    "nums_mid_gt_nums_right": "nums[mid] > nums[right] GUARANTEES mid is in the left (unsorted/larger) portion. The rotation pivot is somewhere between mid+1 and right. Move left to mid+1.",
+    "nums_mid_le_nums_right": "nums[mid] <= nums[right] means mid is in the right (sorted/smaller) portion. The minimum is at mid or to the left of mid. Move right to mid (NOT mid-1, because mid itself could BE the minimum).",
+    "why_not_left": "If we compared nums[mid] with nums[left]: when nums[mid] > nums[left], mid could be in the LEFT sorted portion (normal case) OR the array might not be rotated at all. The comparison is ambiguous. Comparing with right avoids this ambiguity because the right element is always in the smaller portion (or is the minimum itself)."
+  },
+  "why_right_equals_mid_not_mid_minus_one": "When nums[mid] <= nums[right], we set right = mid (not mid - 1). This is because mid COULD be the minimum itself. If we set right = mid - 1, we might skip the minimum. Setting right = mid keeps it in the search window. The loop terminates when left == right, at which point both point to the minimum.",
+  "loop_termination": "Loop condition is 'while left < right' (not left <= right). When left == right, both pointers have converged to the minimum. Returning nums[left] (= nums[right]) gives the answer. If we used left <= right, we'd need to handle the left > right case — unnecessary with the current structure.",
+  "approach": {
+    "name": "Binary search on rotation point",
+    "steps": [
+      "Initialize left = 0, right = n-1.",
+      "While left < right: compute mid = (left + right) // 2.",
+      "If nums[mid] > nums[right]: minimum is in (mid, right]. Set left = mid + 1.",
+      "Else (nums[mid] <= nums[right]): minimum is at mid or in [left, mid). Set right = mid.",
+      "When loop exits: left == right. Return nums[left]."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "from typing import List\n\nclass Solution:\n    def findMin(self, nums: List[int]) -> int:\n        left = 0\n        right = len(nums) - 1\n\n        while left < right:  # loop until left and right converge on the minimum\n            mid = (left + right) // 2\n\n            if nums[mid] > nums[right]:\n                # mid is in the left (larger) portion\n                # minimum must be strictly to the right of mid\n                left = mid + 1\n            else:\n                # mid is in the right (smaller) portion\n                # minimum is at mid or to the left — include mid\n                right = mid\n\n        # left == right, both pointing at the minimum\n        return nums[left]\n\n        # Time Complexity:  O(log n) — binary search halves the search space each iteration\n        # Space Complexity: O(1) — only pointer variables"
+  },
+  "complexity": {
+    "time": "O(log n) — each iteration halves the search space. After log2(n) iterations, left == right.",
+    "space": "O(1) — three integer variables only."
+  },
+  "full_trace": {
+    "input": "nums = [4,5,6,7,0,1,2]",
+    "steps": [
+      "left=0, right=6. mid=(0+6)//2=3. nums[3]=7, nums[6]=2. 7>2 -> left=3+1=4.",
+      "left=4, right=6. mid=(4+6)//2=5. nums[5]=1, nums[6]=2. 1<=2 -> right=5.",
+      "left=4, right=5. mid=(4+5)//2=4. nums[4]=0, nums[5]=1. 0<=1 -> right=4.",
+      "left=4, right=4. left < right is False. Exit.",
+      "Return nums[4] = 0."
+    ]
+  },
+  "full_trace_2": {
+    "input": "nums = [3,4,5,1,2]",
+    "steps": [
+      "left=0, right=4. mid=2. nums[2]=5, nums[4]=2. 5>2 -> left=3.",
+      "left=3, right=4. mid=3. nums[3]=1, nums[4]=2. 1<=2 -> right=3.",
+      "left=3, right=3. Exit.",
+      "Return nums[3] = 1."
+    ]
+  },
+  "full_trace_3": {
+    "input": "nums = [11,13,15,17] (not rotated)",
+    "steps": [
+      "left=0, right=3. mid=1. nums[1]=13, nums[3]=17. 13<=17 -> right=1.",
+      "left=0, right=1. mid=0. nums[0]=11, nums[1]=13. 11<=13 -> right=0.",
+      "left=0, right=0. Exit.",
+      "Return nums[0] = 11. Correct — first element is minimum for unrotated array."
+    ]
+  },
+  "why_works_for_unrotated": "If the array is not rotated (or rotated n times), it is fully sorted: [1,2,3,4,5]. In this case, nums[mid] <= nums[right] is always true (left half of sorted array always has smaller or equal values than anything to the right). right keeps shrinking left until right=0, which holds the global minimum. The algorithm handles this seamlessly with no special case.",
+  "comparison_with_nums_left": {
+    "problem": "If we used nums[mid] compared to nums[left]: for an unrotated array [1,2,3,4,5], nums[mid]=3 > nums[left]=1 — we'd conclude minimum is in the right half and set left=mid+1. This is wrong; the minimum is at index 0.",
+    "why_broken": "nums[left] < nums[mid] can mean EITHER (1) the array is normally sorted in this range (minimum is at left) OR (2) mid is in the left unsorted portion of a rotated array. The comparison with left is ambiguous. The comparison with right is unambiguous: nums[mid] > nums[right] can ONLY mean mid is in the left portion of a rotated array."
+  },
+  "lc_154_variant": {
+    "title": "Find Minimum in Rotated Sorted Array II (LC 154) — with duplicates",
+    "added_complication": "When nums[mid] == nums[right], we cannot determine which half contains the minimum. Solution: right -= 1 (shrink from right, eliminating one duplicate at a time). Worst case O(n) when all elements are equal.",
+    "code_change": "Add an additional branch: elif nums[mid] == nums[right]: right -= 1"
+  },
+  "search_rotated_variant": {
+    "title": "Search in Rotated Sorted Array (LC 33)",
+    "relation": "LC 33 searches for a TARGET in a rotated sorted array. Also binary search but more conditions: determine which half is sorted, then check if target falls in that sorted half. Harder than LC 153 because you need to reason about both halves and a target value, not just the pivot location."
+  },
+  "python_gotchas": [
+    "right = mid (NOT mid - 1) when nums[mid] <= nums[right]. Setting right = mid - 1 would skip the minimum when mid IS the minimum.",
+    "left = mid + 1 (NOT mid) when nums[mid] > nums[right]. Since nums[mid] is provably NOT the minimum (it's in the larger portion), we safely skip mid.",
+    "mid = (left + right) // 2 uses integer division. In Python 3, // is always integer division — no overflow concern unlike Java/C++. But using (left + right) // 2 is correct; avoid (left + right + 1) // 2 (upper mid) which could cause infinite loops in certain conditions here.",
+    "while left < right NOT while left <= right. When left == right, we have our answer — no more iterations needed. Using <= requires an extra termination check.",
+    "All elements are unique (constraint). With duplicates, nums[mid] == nums[right] creates ambiguity requiring right -= 1 (LC 154).",
+    "Return nums[left] not nums[mid]. At loop exit, mid is undefined/stale. left == right is the converged answer."
+  ],
+  "edge_cases": [
+    {
+      "case": "Single element [5]",
+      "result": "left=0, right=0. while 0 < 0 is False immediately. Return nums[0]=5. Correct."
+    },
+    {
+      "case": "Two elements, rotated [2,1]",
+      "result": "left=0, right=1. mid=0. nums[0]=2>nums[1]=1 -> left=1. left=right=1. Return nums[1]=1."
+    },
+    {
+      "case": "Two elements, sorted [1,2]",
+      "result": "left=0, right=1. mid=0. nums[0]=1<=nums[1]=2 -> right=0. left=right=0. Return nums[0]=1."
+    },
+    {
+      "case": "Rotated by 1: [2,3,4,5,1]",
+      "result": "Minimum at last index. Binary search converges to index 4. Return 1."
+    }
+  ],
+  "related_problems": [
+    {
+      "title": "Find Minimum in Rotated Sorted Array II (LC 154)",
+      "relation": "Same problem with duplicates allowed. Needs extra 'elif nums[mid] == nums[right]: right -= 1' branch. Worst case O(n)."
+    },
+    {
+      "title": "Search in Rotated Sorted Array (LC 33)",
+      "relation": "Search for a target in a rotated sorted array. More complex binary search — must determine which half is sorted AND whether target is in that half."
+    },
+    {
+      "title": "Binary Search (LC 704)",
+      "relation": "Classic binary search on a sorted array. LC 153 applies the same halving logic but on a rotated array where 'which half to eliminate' requires a rotation-aware comparison."
+    },
+    {
+      "title": "Maximum Width Ramp (LC 962)",
+      "relation": "Also uses structural properties of partially ordered arrays to avoid O(n^2) brute force."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "Why do we compare nums[mid] with nums[right] instead of nums[left]?",
+      "options": [
+        "nums[right] is always smaller than nums[left] in a rotated array",
+        "Comparing with nums[right] is unambiguous: nums[mid] > nums[right] can ONLY mean mid is in the unsorted (larger) left portion of a rotated array. Comparing with nums[left] is ambiguous — nums[mid] > nums[left] can mean the array is normally sorted (minimum is at left) OR mid is in the left portion of a rotation.",
+        "nums[right] is always the minimum of the array",
+        "The right pointer marks the end of the first sorted portion"
+      ],
+      "answer": 1,
+      "explanation": "Key disambiguation: nums[mid] > nums[right] is ONLY possible if there's a rotation between mid and right (otherwise a sorted array would have nums[mid] <= nums[right]). This unambiguously places mid in the larger portion and the minimum in (mid, right]. Comparing with nums[left]: nums[mid] > nums[left] can mean either normal sorted order (minimum is at left, not mid+1) or mid is in the left rotated portion. The ambiguity makes left comparison unreliable."
+    },
+    {
+      "id": 2,
+      "question": "When nums[mid] > nums[right], why do we set left = mid + 1 (not mid)?",
+      "options": [
+        "To avoid infinite loops when mid == left",
+        "nums[mid] is PROVABLY not the minimum: it's larger than nums[right], and the minimum cannot be larger than nums[right] (the minimum is the smallest element). So we can safely exclude mid from the search space by moving left past it.",
+        "mid + 1 ensures the search space always decreases by at least 1",
+        "Because mid is always in the sorted left half"
+      ],
+      "answer": 1,
+      "explanation": "If nums[mid] > nums[right], mid is in the 'larger values' portion of the rotated array. The minimum is definitively in (mid, right]. Since nums[mid] itself is larger than nums[right] and all values to the right are smaller, nums[mid] cannot be the minimum. Setting left = mid + 1 safely excludes mid from consideration."
+    },
+    {
+      "id": 3,
+      "question": "When nums[mid] <= nums[right], why do we set right = mid (not mid - 1)?",
+      "options": [
+        "right = mid - 1 would cause left > right immediately",
+        "mid COULD be the minimum itself. If we set right = mid - 1, we skip mid and might lose the minimum. Setting right = mid keeps mid in the search window. The loop continues until left == right == mid, at which point we return nums[mid].",
+        "The condition nums[mid] <= nums[right] guarantees mid is the minimum",
+        "Using mid - 1 would give wrong results only for odd-length arrays"
+      ],
+      "answer": 1,
+      "explanation": "When nums[mid] <= nums[right]: mid is in the smaller (right) portion of the rotated array. The minimum could be at mid (if mid is the pivot point) or to the left of mid. Setting right = mid - 1 would eliminate mid and could miss the minimum. Setting right = mid preserves mid as a candidate. Example: [3,1,2], mid=1 (value 1) is the minimum — right = mid keeps it; right = mid-1 would incorrectly exclude it."
+    },
+    {
+      "id": 4,
+      "question": "What does the loop invariant guarantee?",
+      "options": [
+        "nums[left] is always the minimum at each iteration",
+        "The minimum is always within the range [left, right] (inclusive) at every iteration. Each iteration narrows the range by at least 1 (either left increases or right decreases). When left == right, the minimum is at that single remaining index.",
+        "left < mid < right is always maintained",
+        "nums[mid] is always the minimum candidate"
+      ],
+      "answer": 1,
+      "explanation": "Invariant: the minimum lies in [left, right] at all times. Case 1 (nums[mid] > nums[right]): minimum is in (mid, right] — move left to mid+1. Case 2 (nums[mid] <= nums[right]): minimum is in [left, mid] — move right to mid. Both cases maintain the invariant while shrinking the range. When left == right, the invariant guarantees that single index holds the minimum."
+    },
+    {
+      "id": 5,
+      "question": "nums = [4,5,6,7,0,1,2]. Trace all iterations.",
+      "options": [
+        "Returns 0 after 3 iterations: left converges to index 4.",
+        "Returns 4 — first element",
+        "Returns 7 — largest element",
+        "Returns 2 — last element"
+      ],
+      "answer": 0,
+      "explanation": "Iteration 1: left=0, right=6, mid=3. nums[3]=7>nums[6]=2 -> left=4. Iteration 2: left=4, right=6, mid=5. nums[5]=1<=nums[6]=2 -> right=5. Iteration 3: left=4, right=5, mid=4. nums[4]=0<=nums[5]=1 -> right=4. left=4=right=4. Return nums[4]=0."
+    },
+    {
+      "id": 6,
+      "question": "nums = [11,13,15,17] (not rotated). What happens?",
+      "options": [
+        "The algorithm fails for non-rotated arrays",
+        "Binary search behaves as if finding the minimum of a normal sorted array. nums[mid] <= nums[right] is always true (sorted order). right keeps shrinking leftward. Eventually right=0=left. Return nums[0]=11. Correct — first element is minimum for non-rotated array.",
+        "The algorithm returns nums[right]=17 (last element)",
+        "It returns -1 because no rotation was detected"
+      ],
+      "answer": 1,
+      "explanation": "Iteration 1: mid=1, nums[1]=13<=nums[3]=17 -> right=1. Iteration 2: mid=0, nums[0]=11<=nums[1]=13 -> right=0. left=0=right=0. Return nums[0]=11. For a non-rotated array, the minimum is always the first element. The algorithm handles this without any special case — right repeatedly moves left until convergence at index 0."
+    },
+    {
+      "id": 7,
+      "question": "What is the time complexity and why?",
+      "options": [
+        "O(n) — we might scan the entire array",
+        "O(log n) — each iteration halves the search space. After log2(n) iterations, left == right. No more than log2(5000) ≈ 13 iterations for the maximum n=5000.",
+        "O(n log n) — binary search on each half",
+        "O(1) — the answer is always at a fixed position"
+      ],
+      "answer": 1,
+      "explanation": "Each iteration: either left moves right (left = mid+1) or right moves left (right = mid). In both cases, the range [left, right] strictly decreases. Starting range: n-1. After k iterations: range <= (n-1) / 2^k. When range = 0, left==right. Number of iterations: at most log2(n). Total: O(log n)."
+    },
+    {
+      "id": 8,
+      "question": "Why is the loop condition 'while left < right' and not 'while left <= right'?",
+      "options": [
+        "Using <= causes an infinite loop",
+        "When left == right, both pointers have converged to a single element — the minimum. No further processing is needed. left < right correctly runs the loop until convergence. Using <= would run one extra iteration with left == right == mid — performing a comparison that neither changes left nor right, wasting one step (though not incorrect if handled properly).",
+        "left <= right would skip the minimum index",
+        "Python requires < for binary search loops"
+      ],
+      "answer": 1,
+      "explanation": "When left == right: the minimum is at that index. The loop stops. If we used left <= right: at left==right, mid = left = right. nums[mid] <= nums[right] is nums[left] <= nums[left] = True. right = mid = left. No change. Infinite loop! The while left < right condition cleanly terminates when the search space collapses to one element."
+    },
+    {
+      "id": 9,
+      "question": "nums = [2,1]. Trace the algorithm.",
+      "options": [
+        "left=0, right=1. mid=0. nums[0]=2>nums[1]=1 -> left=1. left=right=1. Return nums[1]=1.",
+        "left=0, right=1. mid=0. nums[0]=2<=nums[1]=1? No wait, 2>1. left=1. Return 1.",
+        "Returns 2 — first element",
+        "Both A and B describe the same thing: return 1."
+      ],
+      "answer": 3,
+      "explanation": "left=0, right=1. mid=(0+1)//2=0. nums[0]=2, nums[1]=1. 2 > 1: left = mid+1 = 1. Now left=1=right=1. while 1 < 1 is False. Return nums[1]=1. Correct — minimum of [2,1] is 1."
+    },
+    {
+      "id": 10,
+      "question": "nums = [1,2] (sorted, not rotated). Trace the algorithm.",
+      "options": [
+        "Returns 2 — the loop moves toward the right",
+        "left=0, right=1. mid=0. nums[0]=1<=nums[1]=2 -> right=0. left=right=0. Return nums[0]=1.",
+        "Returns -1 — array not recognized as rotated",
+        "Infinite loop — nums[mid] == nums[right] case"
+      ],
+      "answer": 1,
+      "explanation": "left=0, right=1. mid=0. nums[0]=1, nums[1]=2. 1 <= 2: right = mid = 0. left=0=right=0. Return nums[0]=1. Sorted array minimum is at index 0. Algorithm handles seamlessly."
+    },
+    {
+      "id": 11,
+      "question": "What modification handles the variant with duplicates (LC 154)?",
+      "options": [
+        "Use nums[mid] >= nums[right] instead of >",
+        "Add an extra branch: elif nums[mid] == nums[right]: right -= 1. When mid and right have equal values, we cannot determine which half contains the minimum. Shrink right by 1 to eliminate one duplicate. Worst case O(n) (all elements equal).",
+        "Sort the array first, then return the first element",
+        "Compare with nums[left] instead of nums[right] when equal"
+      ],
+      "answer": 1,
+      "explanation": "With duplicates: if nums[mid] == nums[right], the minimum could be anywhere — we can't tell. Example: [3,3,1,3]. nums[mid]=nums[1]=3 == nums[right]=3 — but the minimum is at index 2. We can't eliminate either half. Safe move: right -= 1 (we know nums[right] is not the unique minimum if there's a duplicate). This degrades to O(n) worst case for all-equal arrays."
+    },
+    {
+      "id": 12,
+      "question": "After the loop, why do we return nums[left] instead of nums[mid]?",
+      "options": [
+        "mid is not defined after the while loop in Python",
+        "At loop exit, left == right. mid holds the value from the LAST iteration which is not necessarily left. When left == right, nums[left] == nums[right] and either is the correct answer. Using nums[mid] would work IF mid was updated in the last iteration — but it's cleaner and unambiguous to use nums[left] which always holds the converged minimum.",
+        "left always points to a smaller value than mid",
+        "Python requires using the left pointer for binary search results"
+      ],
+      "answer": 1,
+      "explanation": "At loop exit, left == right. Both point to the minimum. mid's value depends on the last iteration and may or may not equal left. Using nums[left] (or equivalently nums[right]) is the clean, unambiguous choice. It directly reflects 'the search space collapsed to this single index' regardless of what mid was last set to."
+    },
+    {
+      "id": 13,
+      "question": "nums = [5,1,2,3,4]. Trace all iterations.",
+      "options": [
+        "Returns 1. left=0,right=4. mid=2. nums[2]=2<=nums[4]=4->right=2. mid=1. nums[1]=1<=nums[2]=2->right=1. mid=0. nums[0]=5>nums[1]=1->left=1. left=right=1. Return nums[1]=1.",
+        "Returns 5 — first element",
+        "Returns 4 — last element",
+        "Returns 3 — middle element"
+      ],
+      "answer": 0,
+      "explanation": "Iteration 1: left=0,right=4,mid=2. nums[2]=2<=nums[4]=4 -> right=2. Iteration 2: left=0,right=2,mid=1. nums[1]=1<=nums[2]=2 -> right=1. Iteration 3: left=0,right=1,mid=0. nums[0]=5>nums[1]=1 -> left=1. left=1=right=1. Return nums[1]=1."
+    },
+    {
+      "id": 14,
+      "question": "How does this algorithm relate to Search in Rotated Sorted Array (LC 33)?",
+      "options": [
+        "They use identical code",
+        "Both use binary search on a rotated sorted array. LC 153 finds the minimum (pivot point). LC 33 searches for a target. LC 33 is harder: must determine which half is sorted (similar pivot reasoning) AND check if the target falls in that half. LC 153 only needs to find the pivot; LC 33 needs to act on it.",
+        "LC 33 uses linear scan while LC 153 uses binary search",
+        "LC 33 finds the maximum; LC 153 finds the minimum"
+      ],
+      "answer": 1,
+      "explanation": "LC 153 finds WHERE the rotation point is (the minimum). LC 33 uses similar reasoning — determine which half is sorted — then checks if the target is in the sorted half. Both exploit the same rotated array structure. LC 153 is the simpler prerequisite: understand the pivot location before tackling LC 33's additional target-check logic."
+    },
+    {
+      "id": 15,
+      "question": "If nums = [3,4,5,1,2] and nums[mid] = 5 (at index 2), nums[right] = 2 (at index 4). What does 5 > 2 tell us about the minimum's location?",
+      "options": [
+        "Minimum is in [0, 2]",
+        "5 > 2 means nums[mid] > nums[right]. Index 2 is in the LEFT (larger) portion of the rotated array. All elements from index 0 to 2 are larger than all elements from index 3 to 4. The minimum MUST be in (2, 4] = indices 3 or 4. Set left = 3.",
+        "Minimum could be anywhere — no conclusion possible",
+        "Minimum is at index 2 (the mid element)"
+      ],
+      "answer": 1,
+      "explanation": "nums[mid]=5 > nums[right]=2 means the array is NOT fully sorted from mid to right — there's a rotation between them. The right portion [1,2] is smaller than the left portion [3,4,5]. The pivot (minimum) separates them and must be in (mid, right] = indices 3-4. We safely move left to mid+1=3, eliminating the left portion."
+    },
+    {
+      "id": 16,
+      "question": "Can mid ever be 0 or n-1 during the loop?",
+      "options": [
+        "Never — mid is always strictly between left and right",
+        "mid = (left + right) // 2. When left=0 and right=1: mid=0. mid CAN equal left. But mid can never equal right when left < right (since (left+right)//2 < right always when using floor division with left < right). This ensures right = mid always shrinks the range.",
+        "mid is always strictly greater than 0",
+        "mid can equal right in some edge cases"
+      ],
+      "answer": 1,
+      "explanation": "With integer floor division: mid = (left + right) // 2 when left < right gives mid < right always (since (left+right)/2 < right when left < right). Mid CAN equal left (e.g., left=0, right=1: mid=0). This is why left = mid + 1 (not mid) — otherwise when mid == left, setting left = mid would create an infinite loop. Setting left = mid + 1 ensures the range strictly decreases even when mid == left."
+    },
+    {
+      "id": 17,
+      "question": "What would happen if we used left = mid instead of left = mid + 1?",
+      "options": [
+        "The algorithm would still work correctly",
+        "When left=4 and right=5: mid=4. nums[mid] > nums[right]: set left=mid=4. left=4,right=5 — unchanged! Infinite loop. Setting left=mid+1=5 advances left past mid, shrinking the range by 1.",
+        "The algorithm would return the wrong element",
+        "The loop would terminate one step earlier"
+      ],
+      "answer": 1,
+      "explanation": "When mid == left (which happens when right = left+1), setting left = mid gives left = left — no change. The search space stays the same: [left, right] with right = left+1. Next iteration: same mid, same outcome. Infinite loop. Setting left = mid+1 ensures left always strictly increases when this branch is taken, guaranteeing loop termination."
+    },
+    {
+      "id": 18,
+      "question": "nums = [2,3,4,5,1] (rotated by 1 from the right). Where does binary search converge?",
+      "options": [
+        "Index 0 — algorithm thinks 2 is minimum",
+        "Index 4 — the minimum 1 is at the last position. Binary search correctly identifies it.",
+        "Index 2 — the middle element",
+        "Index 3 — one before the minimum"
+      ],
+      "answer": 1,
+      "explanation": "Iteration 1: left=0,right=4,mid=2. nums[2]=4<=nums[4]=1? No wait — 4>1: left=3. Iteration 2: left=3,right=4,mid=3. nums[3]=5>nums[4]=1: left=4. left=right=4. Return nums[4]=1. The minimum at the last index is correctly found."
+    },
+    {
+      "id": 19,
+      "question": "A single-element array [42] — what does the algorithm return?",
+      "options": [
+        "Error — cannot binary search a single element",
+        "42. left=0, right=0. while 0 < 0 is immediately False. Return nums[0]=42.",
+        "0 — empty default value",
+        "-1 — indicates no rotation found"
+      ],
+      "answer": 1,
+      "explanation": "left=0, right=len(nums)-1=0. while left < right: while 0 < 0 is False. Loop body never executes. Return nums[left]=nums[0]=42. A single element is trivially the minimum. The algorithm handles n=1 correctly without special casing."
+    },
+    {
+      "id": 20,
+      "question": "The problem states all integers are UNIQUE. Why does uniqueness matter?",
+      "options": [
+        "Duplicates would cause index out of range errors",
+        "With unique elements, nums[mid] != nums[right] (unless mid == right, which doesn't happen in the loop). So the condition nums[mid] > nums[right] vs nums[mid] < nums[right] is always clear-cut — no == case to handle. With duplicates, nums[mid] == nums[right] creates ambiguity (see LC 154). Uniqueness simplifies to just two clean branches.",
+        "Duplicates would make the array non-sortable",
+        "Uniqueness ensures O(log n) is achievable; duplicates make it O(n)"
+      ],
+      "answer": 1,
+      "explanation": "With unique elements: either nums[mid] > nums[right] (mid in left portion) or nums[mid] < nums[right] (mid in right portion, including == case impossible since mid != right during loop). Clean binary decision. With duplicates: nums[mid] == nums[right] doesn't tell us which side has the minimum — it could be at mid, to the left, or to the right. Need additional handling (LC 154: right -= 1 in the equal case)."
+    },
+    {
+      "id": 21,
+      "question": "nums = [1] (single element, minimum possible input). What happens?",
+      "options": [
+        "IndexError — right = len(nums)-1 = 0, then mid = -1",
+        "Returns 1. left=0, right=0. Loop condition 0<0 is False immediately. Return nums[0]=1.",
+        "Returns 0 — no rotation found",
+        "Infinite loop — single element has no right neighbor"
+      ],
+      "answer": 1,
+      "explanation": "left=0, right=len([1])-1=0. while 0 < 0 is False. Return nums[0]=1. No mid is ever computed. No array access beyond index 0. Handles the minimum input n=1 cleanly."
+    },
+    {
+      "id": 22,
+      "question": "Why can't we just return min(nums) in O(n) and call it done?",
+      "options": [
+        "min() doesn't work on rotated arrays",
+        "min(nums) is O(n) — correct but violates the problem's O(log n) requirement. The problem explicitly asks for an O(log n) algorithm. The structure of a rotated sorted array allows binary search to find the minimum in O(log n) — exploiting that structure is the point of the problem.",
+        "min() returns the wrong element in rotated arrays",
+        "min() has O(n^2) complexity in Python"
+      ],
+      "answer": 1,
+      "explanation": "min(nums) is O(n) — it scans every element. Correct but doesn't satisfy the problem constraint 'O(log n) time.' The problem is explicitly testing whether you can exploit the rotated sorted structure for binary search. In an interview, proposing min() first and then the O(log n) solution shows good progression, but the required answer is the binary search approach."
+    },
+    {
+      "id": 23,
+      "question": "mid = (left + right) // 2 is floor division. Could using ceiling division (left + right + 1) // 2 cause problems?",
+      "options": [
+        "Ceiling division always gives better results",
+        "Yes — ceiling mid can equal right when left+1==right. Example: left=3, right=4. Floor mid=3=left. Ceiling mid=4=right. When nums[mid]=nums[right] (ceiling mid == right) and we set right=mid=right: no change. Infinite loop in the right=mid branch. Floor division ensures mid < right always (when left < right), guaranteeing right=mid always shrinks the range.",
+        "Ceiling division is identical to floor division for binary search",
+        "Ceiling division only differs for even-length arrays"
+      ],
+      "answer": 1,
+      "explanation": "Critical: when left=3, right=4. Floor mid=(3+4)//2=3=left. Ceiling mid=(3+4+1)//2=4=right. If ceiling mid=right and we take the right=mid branch: right stays at right — no shrinkage, infinite loop. Floor division guarantees mid < right strictly (when left < right), so right=mid always decreases right by at least 1. Always use floor division // for this algorithm."
+    },
+    {
+      "id": 24,
+      "question": "nums = [3,4,5,1,2]. The answer is 1 at index 3. Does the algorithm ever directly 'find' index 3, or does it converge there?",
+      "options": [
+        "The algorithm directly jumps to index 3 in one step",
+        "It converges. Iteration 1: mid=2, nums[2]=5>nums[4]=2, left=3. Iteration 2: mid=3, nums[3]=1<=nums[4]=2, right=3. left=right=3. The algorithm doesn't 'know' 1 is the minimum until convergence — it just eliminates half the search space each time until only one candidate remains.",
+        "The algorithm checks index 3 only because it's a known rotation point",
+        "Binary search always finds the exact answer at the midpoint"
+      ],
+      "answer": 1,
+      "explanation": "Binary search never 'knows' the answer upfront — it eliminates impossible halves. Iteration 1 eliminates indices 0-2 (left=3). Iteration 2 sets right=3. Now left=right=3 — the one remaining candidate. Only at that point do we commit to returning nums[3]=1. This is the essence of binary search: logical elimination, not direct discovery."
+    },
+    {
+      "id": 25,
+      "question": "An interviewer asks: 'How do you know this algorithm is correct?' What is the best response?",
+      "options": [
+        "I tested it on all the examples and it works",
+        "By maintaining a loop invariant: the minimum is always within [left, right] at every iteration. Each step either sets left=mid+1 (safe because nums[mid] > nums[right] proves mid is not the minimum) or right=mid (safe because the minimum is at mid or left — never excluded). The range strictly shrinks each iteration (left increases or right decreases). When left==right, the invariant guarantees that index IS the minimum.",
+        "Binary search always works on sorted arrays",
+        "The algorithm is well-known so it must be correct"
+      ],
+      "answer": 1,
+      "explanation": "The invariant-based proof is the correct answer: (1) Invariant established: initially [0, n-1] contains all elements including the minimum. (2) Invariant maintained: left=mid+1 (nums[mid] not minimum, invariant holds for [mid+1, right]). right=mid (minimum in [left, mid], invariant holds). (3) Termination: each iteration strictly decreases right-left. (4) Conclusion: at left==right, invariant says minimum is at left. Return nums[left]."
+    }
+  ]
+}
