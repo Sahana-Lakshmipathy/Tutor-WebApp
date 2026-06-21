@@ -1,0 +1,462 @@
+{
+  "id": "962",
+  "title": "Maximum Width Ramp",
+  "difficulty": "Medium",
+  "tags": ["Array", "Monotonic Stack", "Two Pointers", "Greedy"],
+  "description": "A ramp in an integer array nums is a pair (i, j) for which i < j and nums[i] <= nums[j]. The width of such a ramp is j - i. Given an integer array nums, return the maximum width of a ramp in nums. If there is no ramp, return 0.",
+  "examples": [
+    {
+      "input": "nums = [6,0,8,2,1,5]",
+      "output": "4",
+      "explanation": "Ramp (1, 5): nums[1]=0 <= nums[5]=5. Width = 5-1 = 4."
+    },
+    {
+      "input": "nums = [9,8,1,0,1,9,4,0,4,1]",
+      "output": "7",
+      "explanation": "Ramp (2, 9): nums[2]=1 <= nums[9]=1. Width = 9-2 = 7."
+    },
+    {
+      "input": "nums = [3,1]",
+      "output": "0",
+      "explanation": "nums[0]=3 > nums[1]=1: not a valid ramp. Return 0."
+    },
+    {
+      "input": "nums = [0,1]",
+      "output": "1",
+      "explanation": "nums[0]=0 <= nums[1]=1. Width = 1."
+    }
+  ],
+  "constraints": [
+    "2 <= nums.length <= 5 * 10^4",
+    "0 <= nums[i] <= 5 * 10^4"
+  ],
+  "intuition": "A ramp needs a LEFT index that is small and a RIGHT index that is large with a value >= the left. Two competing goals: maximize width (push left as far left as possible and right as far right as possible) and satisfy the constraint (nums[left] <= nums[right]). Brute force checks all pairs — O(n^2). The key insight is a two-pass monotonic stack approach. Pass 1: build a stack of candidate left indices that are strictly decreasing in value — these are the only useful left endpoints (if nums[i] >= nums[j] for i < j, then j is a better left candidate than i with a strictly smaller value AND a closer position to potential right endpoints). Pass 2: sweep j from right to left. For each j, greedily pop the stack while nums[stack_top] <= nums[j] — the popped index is farther left than any remaining in the stack, so j - popped_index is large. Once no more pops, move j left. This two-pointer-style sweep ensures every valid ramp is considered without O(n^2) work.",
+  "why_decreasing_stack": {
+    "core_argument": "We want left indices that are as far left as possible with the smallest possible values. If at index i we have nums[i] >= nums[k] for some k > i, then index k is strictly better as a left endpoint: k gives smaller width penalty than i for the same right endpoint, and has a smaller value that is easier to satisfy (nums[right] >= nums[k] <= nums[i] so if nums[k] is satisfied, nums[i] would be too -- but k is closer so width is smaller... wait actually LARGER index means smaller width). So actually: if nums[i] >= nums[k] for i < k, then i is a BETTER left endpoint (farther left = bigger potential width). So we keep ONLY indices where the value strictly DECREASES. An index i is useful as a left endpoint only if nums[i] < nums[all indices j < i]. Otherwise a previous index gives both a farther-left position AND a smaller or equal value -- strictly dominating.",
+    "dominance_principle": "Index i dominates index k (i < k) as a left endpoint if nums[i] <= nums[k]. i gives MORE width (farther left) AND an equal or EASIER value constraint. So index k is useless -- we can always use i instead. Therefore we only keep indices where nums is strictly decreasing: each new index added to the stack has a strictly smaller value than all previous stack entries.",
+    "what_stack_contains": "After pass 1, mono_stack contains indices [s0, s1, s2, ...] where s0 < s1 < s2 and nums[s0] > nums[s1] > nums[s2] > ... The stack is ordered by both increasing index AND decreasing value."
+  },
+  "why_sweep_right_to_left": {
+    "goal": "For each candidate left (in the stack), find the farthest right j where nums[j] >= nums[left]. Sweeping j from right gives the farthest possible j first.",
+    "greedy_pop": "When nums[stack_top] <= nums[j]: we found a valid ramp. Record j - stack_top. Pop the stack_top -- it can never do better than this j because j is the farthest right we will ever try for this left (we're sweeping right to left, and we already popped all positions to the right of j). Move to the next stack candidate.",
+    "why_not_decrement_j_on_match": "When a match is found (pop happens), j does NOT decrement. The same j might match the next stack entry too (which has an even smaller value, so nums[j] >= next_entry is more likely). Only when no match is found (stack_top value > nums[j]) do we decrement j.",
+    "why_pop_is_safe": "After popping stack_top at position j, could a later (smaller) j give a wider ramp for stack_top? No. j is the FARTHEST right we've seen so far. Any future j' < j gives width j' - stack_top < j - stack_top. We've already found the best ramp for stack_top."
+  },
+  "algorithm_correctness": "Every valid ramp (i, j) where i is in the stack is found. If i is in the stack, j will eventually be considered. When j is reached in the sweep, since nums[i] <= nums[j], the pop triggers. The ramp is recorded. Non-stack indices are dominated — they have a stack entry that is farther left with equal or smaller value, giving a better or equal ramp.",
+  "approach": {
+    "name": "Monotonic decreasing stack + right-to-left greedy sweep",
+    "steps": [
+      "Pass 1: Build a strictly decreasing stack of (index, value) pairs. Iterate left to right. Append only if stack is empty OR nums[i] < stack[-1][1].",
+      "Pass 2: Initialize j = n-1. While j >= 0 and stack is not empty:",
+      "  If stack[-1][1] <= nums[j]: valid ramp found. Pop (left, _). Update ramp = max(ramp, j - left). Do NOT decrement j.",
+      "  Else: no match. Decrement j.",
+      "Return ramp."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "from typing import List\n\nclass Solution:\n    def maxWidthRamp(self, nums: List[int]) -> int:\n        mono_stack = []\n        ramp = 0\n\n        # pass 1 — build strictly decreasing stack of candidate left endpoints\n        for i in range(len(nums)):\n            if not mono_stack or mono_stack[-1][1] > nums[i]:\n                mono_stack.append((i, nums[i]))\n\n        # pass 2 — sweep j from right to find farthest valid right for each left\n        j = len(nums) - 1\n        while j >= 0 and mono_stack:\n            if mono_stack[-1][1] <= nums[j]:\n                # valid ramp: left index from stack, right index is j\n                left, _ = mono_stack.pop()\n                ramp = max(ramp, j - left)\n                # don't decrement j — same j might match next stack entry\n            else:\n                j -= 1  # current j can't satisfy stack top — try smaller j\n\n        return ramp\n\n        # Time Complexity:  O(n) — each element pushed/popped at most once, j moves at most n steps\n        # Space Complexity: O(n) — the stack holds at most n entries"
+  },
+  "complexity": {
+    "time": "O(n) — Pass 1: n iterations, each push is O(1). Pass 2: j decrements at most n times, and total pops across all iterations is at most the stack size <= n. Total work: O(n).",
+    "space": "O(n) — the stack stores at most n entries (worst case: strictly decreasing array)."
+  },
+  "full_trace": {
+    "input": "nums = [6,0,8,2,1,5]",
+    "pass_1_build_stack": [
+      "i=0: stack empty -> push (0,6). stack=[(0,6)].",
+      "i=1: nums[1]=0 < stack[-1][1]=6 -> push (1,0). stack=[(0,6),(1,0)].",
+      "i=2: nums[2]=8 > stack[-1][1]=0 -> skip.",
+      "i=3: nums[3]=2 > stack[-1][1]=0 -> skip.",
+      "i=4: nums[4]=1 > stack[-1][1]=0 -> skip.",
+      "i=5: nums[5]=5 > stack[-1][1]=0 -> skip.",
+      "Final stack: [(0,6),(1,0)]."
+    ],
+    "pass_2_sweep": [
+      "j=5: stack[-1]=(1,0). nums[j]=5 >= 0 -> pop (1,0). ramp=max(0,5-1)=4. stack=[(0,6)]. j stays 5.",
+      "j=5: stack[-1]=(0,6). nums[j]=5 >= 6? No (5<6). j-=1. j=4.",
+      "j=4: stack[-1]=(0,6). nums[4]=1 >= 6? No. j-=1. j=3.",
+      "j=3: stack[-1]=(0,6). nums[3]=2 >= 6? No. j-=1. j=2.",
+      "j=2: stack[-1]=(0,6). nums[2]=8 >= 6? Yes -> pop (0,6). ramp=max(4,2-0)=4. stack=[]. Stack empty: exit.",
+      "Return 4."
+    ]
+  },
+  "full_trace_2": {
+    "input": "nums = [9,8,1,0,1,9,4,0,4,1]",
+    "pass_1": [
+      "i=0: push (0,9). stack=[(0,9)].",
+      "i=1: 8<9 -> push (1,8). stack=[(0,9),(1,8)].",
+      "i=2: 1<8 -> push (2,1). stack=[(0,9),(1,8),(2,1)].",
+      "i=3: 0<1 -> push (3,0). stack=[(0,9),(1,8),(2,1),(3,0)].",
+      "i=4: 1>0 -> skip.",
+      "i=5 through i=9: all > 0 -> skip.",
+      "Final stack: [(0,9),(1,8),(2,1),(3,0)]."
+    ],
+    "pass_2": [
+      "j=9: nums[9]=1. stack[-1]=(3,0). 1>=0 -> pop (3,0). ramp=max(0,9-3)=6. j stays 9.",
+      "j=9: stack[-1]=(2,1). 1>=1 -> pop (2,1). ramp=max(6,9-2)=7. j stays 9.",
+      "j=9: stack[-1]=(1,8). 1>=8? No. j-=1. j=8.",
+      "j=8: nums[8]=4. stack[-1]=(1,8). 4>=8? No. j-=1. j=7.",
+      "j=7: nums[7]=0. stack[-1]=(1,8). 0>=8? No. j-=1. j=6.",
+      "j=6: nums[6]=4. stack[-1]=(1,8). 4>=8? No. j-=1. j=5.",
+      "j=5: nums[5]=9. stack[-1]=(1,8). 9>=8 -> pop (1,8). ramp=max(7,5-1)=7. j stays 5.",
+      "j=5: stack[-1]=(0,9). 9>=9 -> pop (0,9). ramp=max(7,5-0)=7. stack=[]. Exit.",
+      "Return 7."
+    ]
+  },
+  "why_condition_is_strict_less": "Pass 1 uses 'mono_stack[-1][1] > nums[i]' (strictly greater) to push. This builds a STRICTLY decreasing sequence. If we used >= (non-strictly decreasing), we might exclude indices that have the same value as the current stack top — those could be valid left endpoints with smaller index (farther left). Strict decrease ensures we capture the EARLIEST occurrence of each new minimum value.",
+  "brute_force": {
+    "description": "Check all pairs (i, j) with i < j. If nums[i] <= nums[j], update max width.",
+    "code": "def maxWidthRamp(self, nums):\n    n = len(nums)\n    ramp = 0\n    for i in range(n):\n        for j in range(i+1, n):\n            if nums[i] <= nums[j]:\n                ramp = max(ramp, j - i)\n    return ramp",
+    "time": "O(n^2)",
+    "space": "O(1)",
+    "why_too_slow": "For n=5*10^4: 2.5*10^9 operations. Far too slow."
+  },
+  "binary_search_alternative": {
+    "description": "Same pass 1 (build decreasing stack). For each j from right to left, binary search the stack for the leftmost entry with value <= nums[j]. O(n log n) time.",
+    "when_to_use": "If you forget the right-to-left sweep trick, binary search on the stack is still O(n log n) — better than O(n^2) brute force.",
+    "time": "O(n log n)"
+  },
+  "python_gotchas": [
+    "The stack stores (index, value) TUPLES — not just indices. This avoids repeated nums[index] lookups during pass 2 and makes the comparison 'mono_stack[-1][1] <= nums[j]' readable.",
+    "In pass 2, j does NOT decrement when a pop occurs. The same j might satisfy multiple stack entries (all with smaller values). Decrementing on a match would miss valid ramps.",
+    "The while loop exits when EITHER j < 0 OR the stack is empty. If the stack empties, no more candidate left endpoints exist — quit. If j goes negative, we've exhausted all right endpoints.",
+    "mono_stack[-1][1] > nums[i] in pass 1 uses index [1] for the value. Alternatively store just indices: 'if not mono_stack or nums[mono_stack[-1]] > nums[i]' — but storing tuples is more readable.",
+    "ramp is initialized to 0. If no valid ramp exists (e.g., strictly decreasing array), ramp stays 0 and is returned correctly.",
+    "The stack is built left-to-right but consumed right-to-left. The BOTTOM of the stack (earliest element, largest value) is the last to be popped. This is why sweeping j rightward first matches the smallest-value (top) entries first and largest-value (bottom) entries last."
+  ],
+  "edge_cases": [
+    {
+      "case": "Strictly decreasing: [5,4,3,2,1]",
+      "result": "Stack after pass 1: [(0,5),(1,4),(2,3),(3,2),(4,1)]. Pass 2: j=4, nums[4]=1. stack[-1]=(4,1). pop, ramp=0. j=3, nums[3]=2. stack[-1]=(3,2). pop, ramp=0. ... All ramps have i==j so width 0. Return 0."
+    },
+    {
+      "case": "Strictly increasing: [1,2,3,4,5]",
+      "result": "Stack after pass 1: only [(0,1)] — each subsequent element is larger, never pushed. Pass 2: j=4, nums[4]=5 >= 1, pop (0,1), ramp=4. Return 4."
+    },
+    {
+      "case": "All same: [3,3,3,3]",
+      "result": "Stack after pass 1: only [(0,3)] — subsequent 3s are NOT < 3, so not pushed. Pass 2: j=3, nums[3]=3 >= 3, pop (0,3), ramp=3. Return 3."
+    }
+  ],
+  "related_problems": [
+    {
+      "title": "Container With Most Water (LC 11)",
+      "relation": "Both use a monotonic stack / two-pointer approach to find the optimal pair. LC 11 finds max area (width * min height). LC 962 finds max width (j - i) subject to nums[i] <= nums[j]."
+    },
+    {
+      "title": "Daily Temperatures (LC 739)",
+      "relation": "Classic monotonic stack problem — find the next greater element to the right. Both use a decreasing stack and process right-side events to resolve left-side stack entries."
+    },
+    {
+      "title": "Jump Game II (LC 45)",
+      "relation": "Also maximizes a width/distance metric using greedy reasoning. Different structure but similar 'farthest reachable' optimization."
+    },
+    {
+      "title": "Trapping Rain Water (LC 42)",
+      "relation": "Also uses left and right extreme structures (max_left, max_right arrays or two pointers). Different metric but shared precomputation mindset."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "Why do we build a STRICTLY DECREASING stack in pass 1, discarding indices with larger or equal values?",
+      "options": [
+        "To keep the stack small for memory efficiency",
+        "If index i has nums[i] >= nums[k] for i < k, then i is a BETTER left endpoint (farther left, equal or larger value — so it's harder to satisfy, but width is bigger). Actually: if nums[i] >= nums[k] with i < k, then i is farther left but has a LARGER value — harder to find a right match. k has a smaller value — easier to match — but is closer. Neither strictly dominates. BUT: if nums[i] <= nums[k] for i < k (i has smaller value AND is farther left), then i is strictly BETTER and k is useless. So we discard k when nums[k] >= nums[i] (k is dominated). We keep k only if nums[k] < nums[i].",
+        "A decreasing stack allows O(1) search during pass 2",
+        "The strictly decreasing property ensures j never decrements too far"
+      ],
+      "answer": 1,
+      "explanation": "The dominance rule: index k (k > i) is useless as a left endpoint if nums[k] >= nums[i], because index i gives: (a) farther-left position (larger potential width) AND (b) smaller or equal value (easier or equally hard to satisfy nums[right] >= nums[i]). So i dominates k. We only keep k if nums[k] < nums[i] — strictly decreasing. This ensures every kept index is the best possible left endpoint for some range of right values."
+    },
+    {
+      "id": 2,
+      "question": "In pass 2, why does j NOT decrement after a successful pop?",
+      "options": [
+        "Decrementing j after a pop would cause an infinite loop",
+        "After popping stack entry (left, val), the new stack top has a strictly larger value (val_new > val). The same j might still satisfy val_new <= nums[j]. We want to give j the chance to match all stack entries it can. Decrementing j prematurely would mean j never tries to be the right endpoint for those other left candidates, missing valid ramps.",
+        "j is only decremented at the start of each outer loop iteration",
+        "The condition mono_stack[-1][1] <= nums[j] handles j movement"
+      ],
+      "answer": 1,
+      "explanation": "Stack entries have strictly decreasing values from bottom to top (top has the smallest value). When j matches the top (smallest value), j might also match the next entry (larger value) since nums[j] >= val_top >= val_next is not guaranteed, but val_next > val_top means it might not. However, if nums[j] is large enough (>= val_next too), we'd miss it by decrementing j. We try the same j against ALL stack entries it can match before moving j left. In the trace: j=9, nums[9]=1 matched both (3,0) and (2,1) before failing on (1,8)."
+    },
+    {
+      "id": 3,
+      "question": "After popping a left index from the stack, why is it safe to discard it permanently?",
+      "options": [
+        "The popped index is already at the optimal right endpoint — it cannot do better",
+        "j is sweeping right to left. When we pop at j, it means j is the FARTHEST right index we will ever try for this left endpoint. Any future j' < j gives width j' - left < j - left. We've already found and recorded the maximum ramp width for this left endpoint. Discarding is safe and correct.",
+        "Popped indices are stored in a separate result array",
+        "The stack automatically re-inserts popped items if needed"
+      ],
+      "answer": 1,
+      "explanation": "j starts at n-1 (rightmost) and only decreases. The first time stack_top matches j, j is the maximum possible right index for stack_top. Future iterations use smaller j, giving smaller widths. We've optimally resolved stack_top. Pop and never look back."
+    },
+    {
+      "id": 4,
+      "question": "What is the time complexity of the full algorithm?",
+      "options": [
+        "O(n^2) — two nested loops",
+        "O(n log n) — binary search in pass 2",
+        "O(n) — pass 1 pushes each element at most once (O(n) total). Pass 2: j decrements at most n times AND total pops across all iterations is at most n (each element popped at most once). O(n) + O(n) = O(n).",
+        "O(n * k) where k is the stack size"
+      ],
+      "answer": 2,
+      "explanation": "Amortized analysis: Pass 1 — each of n elements is either pushed once or skipped. Total pushes <= n. Pass 2 — j can decrement at most n times (bounded by array length). Total pops <= n (each pushed element popped at most once). O(n) pushes + O(n) pops + O(n) j-decrements = O(3n) = O(n)."
+    },
+    {
+      "id": 5,
+      "question": "nums = [6,0,8,2,1,5]. After pass 1, what does the stack contain?",
+      "options": [
+        "[(0,6),(1,0),(2,8),(3,2),(4,1),(5,5)] — all elements",
+        "[(0,6),(1,0)] — only indices 0 and 1 (only place where nums strictly decreases)",
+        "[(1,0),(4,1)] — only local minima",
+        "[(0,6)] — only the first element"
+      ],
+      "answer": 1,
+      "explanation": "i=0: stack empty, push (0,6). i=1: 0<6, push (1,0). i=2: 8>0, skip. i=3: 2>0, skip. i=4: 1>0, skip. i=5: 5>0, skip. Stack=[(0,6),(1,0)]. Only the first two elements form a strictly decreasing prefix — all subsequent elements are larger than 0 (the current minimum) and are dominated by index 1."
+    },
+    {
+      "id": 6,
+      "question": "nums = [3,1]. What does the algorithm return?",
+      "options": [
+        "2 — width between indices 0 and 1",
+        "0 — nums[0]=3 > nums[1]=1: no valid ramp exists",
+        "1 — indices are 1 apart",
+        "An error — array too small"
+      ],
+      "answer": 1,
+      "explanation": "Pass 1: i=0 push (0,3). i=1: 1<3, push (1,1). Stack=[(0,3),(1,1)]. Pass 2: j=1. stack[-1]=(1,1). nums[1]=1 >= 1: pop (1,1). ramp=max(0,1-1)=0. j stays 1. stack[-1]=(0,3). nums[1]=1 >= 3? No. j-=1. j=0. j>=0 but 0 is not >= 3. j-=1. j=-1. Exit. Return 0. Correct — no valid ramp."
+    },
+    {
+      "id": 7,
+      "question": "For nums = [9,8,1,0,1,9,4,0,4,1], the stack after pass 1 is [(0,9),(1,8),(2,1),(3,0)]. Why isn't index 4 (value 1) in the stack?",
+      "options": [
+        "Index 4 is skipped because its value equals stack[-1] value (1==1 is not strictly less)",
+        "1 is not less than stack[-1][1]=0 at the time index 4 is processed — wait, stack[-1] is (3,0) with value 0. nums[4]=1 > 0. So not pushed.",
+        "Index 4 is dominated by index 2 (same value 1 but smaller index, giving larger potential width)",
+        "Both B and C are correct — 1 > 0 so the strict decrease condition fails, AND index 2 dominates index 4"
+      ],
+      "answer": 3,
+      "explanation": "When i=4: stack[-1]=(3,0). nums[4]=1 > 0 = stack[-1][1]. The condition 'nums[i] < stack[-1][1]' is False — 1 is not less than 0. So index 4 is not pushed. Additionally, index 2 already represents value 1 in the stack with a SMALLER index — index 2 dominates index 4 as a left endpoint (farther left, same value). Both reasons explain why index 4 is excluded."
+    },
+    {
+      "id": 8,
+      "question": "In pass 2, what does the 'else: j -= 1' branch handle?",
+      "options": [
+        "It handles the case where the stack is empty",
+        "When stack[-1][1] > nums[j]: the current j cannot satisfy the topmost stack candidate (value too large). Since j is as far right as we'll get for j, and it failed, we try a smaller j. But we DON'T change which stack entry we're trying — the same stack entry might match a different j.",
+        "It moves j to the next local minimum",
+        "It pops the stack when no match is found"
+      ],
+      "answer": 1,
+      "explanation": "The stack top has value V. nums[j] < V — the right side is too small to satisfy this left endpoint. We cannot pop (ramp not valid). We try j-1 to find a larger value. Note: the stack entry is NOT discarded — it stays, waiting for a future j with a larger value... wait but j is decreasing so future j will be smaller... Actually: j sweeps RIGHT to LEFT. If nums[j] < V, maybe nums[j-1] > V? Yes — we search smaller indices for larger values. This is why we move j left until we find a value large enough."
+    },
+    {
+      "id": 9,
+      "question": "nums = [0,1] (minimum valid input). Trace the algorithm.",
+      "options": [
+        "Stack=[(0,0)]. j=1: nums[1]=1>=0 -> pop, ramp=1-0=1. Return 1.",
+        "Stack=[(0,0),(1,1)]. j=1: ... ramp=0. Return 0.",
+        "Stack=[(0,0)]. j=1: no match. j=0. Return 0.",
+        "Stack=[(0,0),(1,1)]. j=1: pop (1,1), ramp=0. pop(0,0), ramp=1. Return 1."
+      ],
+      "answer": 0,
+      "explanation": "Pass 1: i=0 push (0,0). i=1: nums[1]=1 > 0 = stack[-1][1]. Not strictly less — NOT pushed. Stack=[(0,0)]. Pass 2: j=1. stack[-1]=(0,0). nums[1]=1 >= 0: pop (0,0). ramp=max(0,1-0)=1. Stack empty: exit. Return 1. Correct."
+    },
+    {
+      "id": 10,
+      "question": "For strictly increasing nums = [1,2,3,4,5], what does the stack contain after pass 1?",
+      "options": [
+        "All 5 elements — each is pushed",
+        "Only [(0,1)] — each subsequent element is LARGER than 1, so the strict decrease condition fails for all i > 0",
+        "[(0,1),(4,5)] — first and last only",
+        "[(4,5)] — only the maximum"
+      ],
+      "answer": 1,
+      "explanation": "Pass 1: i=0 push (0,1). i=1: nums[1]=2 > 1 = stack[-1][1]. Not pushed. i=2: 3>1, not pushed. i=3,4: same. Stack=[(0,1)] — only the first element. All others have values >= 1 = current top, so they're dominated by index 0 (farther left, equal or smaller value). Pass 2: j=4, nums[4]=5>=1, pop (0,1), ramp=4. Return 4."
+    },
+    {
+      "id": 11,
+      "question": "The algorithm pops stack entries while j decreases. Why can't we pop in increasing j order (left to right)?",
+      "options": [
+        "We need to process from right to find the maximum width first",
+        "If we swept j from left to right, when we first find a valid pair (i,j), it gives a small j. But there might be a larger j' > j that also satisfies nums[i] <= nums[j'] with much larger width j' - i. We'd have to keep checking all future j values for each stack entry — O(n^2) again. Sweeping RIGHT to LEFT ensures the FIRST j that satisfies a stack entry is the MAXIMUM possible j for that entry.",
+        "Left-to-right sweep doesn't work with a decreasing stack",
+        "The stack cannot be popped in increasing order"
+      ],
+      "answer": 1,
+      "explanation": "The crucial insight of the algorithm: sweep j from right. The first j (largest possible) that satisfies a stack entry IS the optimal right endpoint for that entry. Pop it. Done. If we swept left to right: first matching j is the smallest possible, not the largest. We'd need to keep trying all j for each stack entry — back to O(n^2). Right-to-left sweep gives the greedy optimal pairing in O(n)."
+    },
+    {
+      "id": 12,
+      "question": "nums = [5,5,5,5]. What does the algorithm return?",
+      "options": [
+        "0 — equal values don't form valid ramps",
+        "3 — the widest ramp: indices 0 and 3, nums[0]=5 <= nums[3]=5, width=3",
+        "1 — only adjacent equal values count",
+        "4 — the array length"
+      ],
+      "answer": 1,
+      "explanation": "Pass 1: i=0 push (0,5). i=1: 5 is NOT < 5 (strictly less fails). Skip. i=2,3: same. Stack=[(0,5)]. Pass 2: j=3. nums[3]=5 >= 5: pop (0,5). ramp=3-0=3. Stack empty, exit. Return 3. Equal values ARE valid ramps (nums[i] <= nums[j] allows equality)."
+    },
+    {
+      "id": 13,
+      "question": "What happens when the entire array is strictly decreasing, e.g., [5,4,3,2,1]?",
+      "options": [
+        "Stack contains all 5 elements. Pass 2 pops everything in order, finding ramps.",
+        "Stack=[(0,5),(1,4),(2,3),(3,2),(4,1)]. Pass 2: j=4. nums[4]=1 >= 1: pop (4,1), ramp=4-4=0. j stays 4. nums[4]=1 >= 2? No. j=3. nums[3]=2 >= 2: pop (3,2), ramp=0. j stays 3. nums[3]=2 >= 3? No. j=2. Pop (2,3), ramp=0. j=1. Pop(1,4), ramp=0. j=0. Pop(0,5), ramp=0. Return 0.",
+        "Return n-1 because adjacent elements always form ramps",
+        "Stack is empty after pass 1 for decreasing arrays"
+      ],
+      "answer": 1,
+      "explanation": "Strictly decreasing: every element is a new minimum, so ALL elements are pushed in pass 1. Stack=[(0,5),(1,4),(2,3),(3,2),(4,1)]. In pass 2: each stack entry (i, v) is only matched by j = i itself (nums[j]=v=v, width=0). Ramp stays 0. No pair (i,j) with i<j satisfies nums[i]<=nums[j] in a strictly decreasing array. Correct."
+    },
+    {
+      "id": 14,
+      "question": "Could the algorithm be modified to find the MINIMUM width ramp instead? What would change?",
+      "options": [
+        "Just change max to min in 'ramp = max(ramp, j - left)'",
+        "The sweep direction would need to change — sweep j from LEFT to RIGHT to find the smallest j satisfying each stack entry. But then we need to match stack entries starting from the BOTTOM (earliest left endpoints) not the top. The algorithm structure changes significantly.",
+        "Change the stack to increasing order and sweep left",
+        "Minimum width is always 1 (adjacent elements) when nums[i] <= nums[i+1]"
+      ],
+      "answer": 1,
+      "explanation": "For minimum width: we want the CLOSEST j for each left endpoint. Sweeping j left-to-right would give the smallest j first. But then the greedy pairing changes: we want the LATEST (rightmost) left endpoint for each j (to minimize j - left). This requires a different matching strategy — sweep left endpoints from right to left, or use a different structure. The algorithm's beauty is specifically tuned for MAXIMUM width."
+    },
+    {
+      "id": 15,
+      "question": "Why does the algorithm store (index, value) tuples instead of just indices?",
+      "options": [
+        "Tuples are immutable so they cannot be accidentally modified",
+        "Storing tuples avoids repeated nums[index] array lookups during pass 2 comparisons. mono_stack[-1][1] directly gives the value without an extra array access. It's a micro-optimization for readability and cache efficiency.",
+        "Indices alone would cause the stack to have duplicate entries",
+        "The value is needed to reconstruct the answer path"
+      ],
+      "answer": 1,
+      "explanation": "Storing just the index would require nums[mono_stack[-1]] to get the value on every comparison. Storing (index, value) makes the comparison mono_stack[-1][1] <= nums[j] explicit and readable without the extra array lookup. Functionally equivalent — both are O(1). The tuple approach makes the code cleaner. An alternative: store indices and use nums[mono_stack[-1]] in comparisons — also valid."
+    },
+    {
+      "id": 16,
+      "question": "nums = [6,0,8,2,1,5]. In pass 2, when j=5 and we pop (1,0) with ramp=4, do we also check if (0,6) could pair with j=5?",
+      "options": [
+        "No — once we compute ramp=4 we exit immediately",
+        "Yes — after popping (1,0), j stays at 5. We immediately check stack[-1]=(0,6). nums[5]=5 >= 6? No (5 < 6). So (0,6) does NOT match j=5. j decrements. The algorithm correctly tries j=4,3,2 before finding nums[2]=8 >= 6 and popping (0,6) with ramp=2-0=2.",
+        "Yes — and ramp is updated to max(4,5-0)=5 for pair (0,5)",
+        "No — once a pop occurs, j immediately decrements"
+      ],
+      "answer": 1,
+      "explanation": "After popping (1,0), j stays 5. The while loop continues with the same j=5 and new stack[-1]=(0,6). nums[5]=5 < 6 — no match. j decrements to 4. nums[4]=1 < 6 — no match. j=3: nums[3]=2 < 6 — no match. j=2: nums[2]=8 >= 6 — match! Pop (0,6), ramp=max(4,2)=4. Stack empty, exit. The algorithm correctly handles the sequential checks without double-counting."
+    },
+    {
+      "id": 17,
+      "question": "What is the invariant maintained by the stack throughout pass 1?",
+      "options": [
+        "Stack values are sorted in ascending order",
+        "The stack contains indices in increasing order (s0 < s1 < s2...) with strictly decreasing values (nums[s0] > nums[s1] > nums[s2] > ...). Every index in the stack is a potential 'best left endpoint' that cannot be dominated by any other kept index.",
+        "Stack size never exceeds sqrt(n)",
+        "The top of the stack always holds the global minimum"
+      ],
+      "answer": 1,
+      "explanation": "After each pass 1 iteration: indices in the stack are in strictly increasing order (we only append, never reorder). Values are in strictly decreasing order (we only append if nums[i] < stack[-1][1]). This dual-monotonicity is what enables the O(n) pass 2: sweeping j from right matches large-j with small-value (top of stack) first, then progressively larger-value (bottom of stack) with smaller j — never re-checking pairs."
+    },
+    {
+      "id": 18,
+      "question": "In pass 2, when does j decrement and when does it stay the same?",
+      "options": [
+        "j always decrements after each while loop iteration",
+        "j decrements only when the current j FAILS to match stack[-1] (nums[j] < stack[-1][1]). j stays the same when a match IS found (pop occurs) — the same j might match the next stack entry.",
+        "j decrements only when the stack becomes empty",
+        "j never decrements — only the stack changes"
+      ],
+      "answer": 1,
+      "explanation": "Two branches: (1) match: pop stack, ramp updated, j STAYS — try same j against next stack entry. (2) no match: j DECREMENTS — current j too small to satisfy current stack top. This asymmetry is the key to O(n): j decrements at most n times total, and each pop removes one element (at most n pops total). The two operations together make the pass O(n)."
+    },
+    {
+      "id": 19,
+      "question": "Could you solve this problem with a two-pointer approach (no stack)?",
+      "options": [
+        "Yes — two pointers can always replace a stack",
+        "Not directly with the same simple two-pointer as LC 11. Without the stack preprocessing, a two-pointer approach would not know which left indices to consider. The stack's preprocessing identifies the candidate left endpoints — without it, you'd need to consider all indices as potential lefts. You could precompute min_from_left (similar to max_left in LC 42) and max_from_right, but that leads to the same O(n) structure. A pure two-pointer without precomputation is not straightforward here.",
+        "Yes — start left=0, right=n-1, move similar to LC 11",
+        "Yes but only for sorted arrays"
+      ],
+      "answer": 1,
+      "explanation": "Unlike LC 11 where the greedy choice is clear (move shorter wall), this problem's greedy is more subtle. Naively moving left or right doesn't work: we don't know which left endpoint to pair with which right. The stack preprocessing resolves this: it identifies the non-dominated left candidates. The stack effectively acts as a preprocessed candidate set that enables the O(n) sweep. Without it, any two-pointer approach would miss the key insight and likely devolve to O(n^2)."
+    },
+    {
+      "id": 20,
+      "question": "nums = [1,0,1,0,1,0,1]. What is the maximum width ramp?",
+      "options": [
+        "6 — indices 0 and 6: nums[0]=1<=nums[6]=1",
+        "6 — correct: pair (0,6) gives width 6 with nums[0]=1<=nums[6]=1",
+        "5 — indices 1 and 6: nums[1]=0<=nums[6]=1, width=5",
+        "Both 6 and 5 are valid ramps but the maximum is 6"
+      ],
+      "answer": 0,
+      "explanation": "Pass 1: i=0 push (0,1). i=1: 0<1 push (1,0). i=2: 1>0 skip. i=3: 0=0 NOT strictly less, skip. i=4,5,6: similar. Stack=[(0,1),(1,0)]. Pass 2: j=6, nums[6]=1. stack[-1]=(1,0). 1>=0 pop (1,0), ramp=6-1=5. j stays 6. stack[-1]=(0,1). 1>=1 pop (0,1), ramp=max(5,6-0)=6. Stack empty, exit. Return 6."
+    },
+    {
+      "id": 21,
+      "question": "What is the condition in pass 1 that determines whether to push: 'mono_stack[-1][1] > nums[i]'. What would change if we used '>=' instead?",
+      "options": [
+        "Nothing changes — > and >= are equivalent for distinct values",
+        "Using >= would push i even when nums[i] == stack[-1][1]. This would add redundant left candidates: both indices have the same value, but the earlier one (stack entry) is farther left — strictly better. Using >= includes worse (closer) duplicates that can never give a wider ramp than the earlier same-value entry. Result: still correct (the earlier entry gives wider ramps) but slightly less efficient.",
+        "Using >= would cause infinite loops",
+        "Using >= would prevent any element from being pushed"
+      ],
+      "answer": 1,
+      "explanation": "Strict > means we push only when nums[i] is STRICTLY smaller than the current top — true strict decrease. With >=: push when nums[i] <= top, meaning equal values are also pushed. The earlier equal-value index (already in stack) dominates the later one (same value, farther left). Adding the later one is harmless but redundant. Correctness is maintained; efficiency is slightly worse. Strict > is preferred for clean dominance elimination."
+    },
+    {
+      "id": 22,
+      "question": "An interviewer asks: 'Why do you process the stack top (not bottom) first in pass 2?' What is the correct answer?",
+      "options": [
+        "Stack top is always larger than bottom — we want the largest values first",
+        "Stack top has the SMALLEST value and LARGEST index. Sweeping j from right to left: the largest j matches the smallest-value stack entry first (easiest to satisfy). As j decreases, we need larger and larger right values to satisfy the remaining (larger-value) stack entries. This natural matching — largest j with smallest constraint, progressively — is why the algorithm is correct and O(n).",
+        "LIFO order ensures we process the most recently added entries first",
+        "Processing top-first avoids integer overflow"
+      ],
+      "answer": 1,
+      "explanation": "Stack top = smallest value (easiest to satisfy, nums[j] >= small_value is most likely). Stack bottom = largest value (hardest to satisfy). By sweeping j right to left: (1) large j sees stack top first — matches the easy constraint, gives wide ramp. (2) as j shrinks, we need to find larger nums[j] for harder constraints (but smaller j gives less width). The pairing is greedy optimal: best j for easiest constraint, remaining-best j for next constraint, etc."
+    },
+    {
+      "id": 23,
+      "question": "nums = [2,1,3]. Trace the full algorithm.",
+      "options": [
+        "Stack=[(0,2),(1,1)]. j=2: nums[2]=3>=1 pop (1,1), ramp=2-1=1. j=2: 3>=2 pop (0,2), ramp=max(1,2-0)=2. Return 2.",
+        "Stack=[(0,2),(1,1)]. j=2: pop (1,1), ramp=1. j-=1=1. pop(0,2)... wait j=2 still after pop.",
+        "Stack=[(0,2)]. j=2: nums[2]=3>=2, pop, ramp=2. Return 2.",
+        "Stack=[(0,2),(1,1)]. Ramp=2. From pair (0,2): nums[0]=2<=nums[2]=3. Width=2."
+      ],
+      "answer": 0,
+      "explanation": "Pass 1: i=0 push (0,2). i=1: 1<2, push (1,1). i=2: 3>1, skip. Stack=[(0,2),(1,1)]. Pass 2: j=2. stack[-1]=(1,1). nums[2]=3>=1: pop (1,1), ramp=2-1=1. j stays 2. stack[-1]=(0,2). nums[2]=3>=2: pop (0,2), ramp=max(1,2-0)=2. Stack empty, exit. Return 2. The pair (0,2): nums[0]=2<=nums[2]=3, width=2. Correct."
+    },
+    {
+      "id": 24,
+      "question": "The problem requires i < j AND nums[i] <= nums[j]. What happens if nums[i] > nums[j] for ALL pairs?",
+      "options": [
+        "An exception is raised",
+        "The algorithm returns 0. ramp is initialized to 0 and only updated when a valid ramp is found. In pass 2, no pop ever triggers (all values are strictly decreasing, so no nums[j] >= stack top value for j > left index). ramp stays 0.",
+        "The algorithm returns -1 to indicate no ramp",
+        "The algorithm returns the minimum element"
+      ],
+      "answer": 1,
+      "explanation": "No valid ramp: ramp = 0 (initialized). Pass 2 never finds nums[j] >= stack[-1][1] for any j to the right of the corresponding stack index. All pops would give width 0 (as in the strictly decreasing example). Final ramp = 0. The problem statement says 'return 0 if there is no ramp' — the initialization correctly handles this."
+    },
+    {
+      "id": 25,
+      "question": "An interviewer asks you to explain WHY the greedy claim 'pop and never look back' is correct. What is the full argument?",
+      "options": [
+        "Because once we find a match, we already have the answer",
+        "When stack entry (left, val) is popped at j: (1) j is the FARTHEST right we've seen so far (j started at n-1 and only decreased). No future j' has j' > j. (2) Width at j is j - left. Any future pair using 'left' would have smaller width. (3) All pairs we've skipped (j' > j where nums[j'] < val) gave no valid ramp for 'left' — those are gone forever. So j - left is the maximum possible ramp width for 'left'. Pop it, record it, never reconsider it.",
+        "Because the monotonic stack property ensures order",
+        "Because j only decrements by 1 each time"
+      ],
+      "answer": 1,
+      "explanation": "Full correctness argument: (1) j is monotonically non-increasing across pass 2. (2) When we pop (left, val) at j: val <= nums[j] (valid ramp). j is the CURRENT value of j — the maximum j we'll ever use going forward. (3) For all j' with j < j' <= n-1: those were tried earlier (j started at n-1) and either gave other matches (for other stack entries) or gave nums[j'] < val (no match for this entry). Case where nums[j'] >= val for j' > j: that would have matched this entry when j=j', giving width j'-left > j-left — but those cases can't happen, because we sweep j rightward first. Actually the sweep is RIGHT TO LEFT, so we try largest j first. When we hit the first j where nums[j] >= val, we pop. That IS the maximum j. Greedy proven."
+    }
+  ]
+}
