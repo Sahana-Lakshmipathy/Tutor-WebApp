@@ -1,0 +1,438 @@
+{
+  "id": "739",
+  "title": "Daily Temperatures",
+  "difficulty": "Medium",
+  "tags": ["Array", "Monotonic Stack", "Stack"],
+  "description": "Given an array of integers temperatures representing the daily temperatures, return an array answer such that answer[i] is the number of days you have to wait after the i-th day to get a warmer temperature. If there is no future day for which this is possible, keep answer[i] == 0.",
+  "examples": [
+    {
+      "input": "temperatures = [73,74,75,71,69,72,76,73]",
+      "output": "[1,1,4,2,1,1,0,0]",
+      "explanation": "Day 0 (73): day 1 is warmer (74). Wait 1 day. Day 1 (74): day 2 is warmer (75). Wait 1 day. Day 2 (75): next warmer is day 6 (76). Wait 4 days. Day 3 (71): day 5 (72) is warmer. Wait 2. Day 4 (69): day 5 (72) is warmer. Wait 1. Day 5 (72): day 6 (76) is warmer. Wait 1. Day 6,7: no warmer day. Stay 0."
+    },
+    {
+      "input": "temperatures = [30,40,50,60]",
+      "output": "[1,1,1,0]",
+      "explanation": "Strictly increasing — each day waits exactly 1 day."
+    },
+    {
+      "input": "temperatures = [30,60,90]",
+      "output": "[1,1,0]",
+      "explanation": "Strictly increasing."
+    },
+    {
+      "input": "temperatures = [90,80,70,60]",
+      "output": "[0,0,0,0]",
+      "explanation": "Strictly decreasing — no warmer day ever comes."
+    }
+  ],
+  "constraints": [
+    "1 <= temperatures.length <= 10^5",
+    "30 <= temperatures[i] <= 100"
+  ],
+  "intuition": "For each day i, we want the next day j > i where temperatures[j] > temperatures[i]. The naive approach scans forward for every i — O(n^2). The key insight: use a monotonic stack to batch-resolve multiple days at once. The stack holds indices of days whose 'next warmer day' has not been found yet — unresolved days. The stack is monotonically decreasing in temperature (the bottom has the highest, the top has the lowest). When we encounter a temperature t at day i that is warmer than the stack top, we know that the stack top's next warmer day is i. We pop it, record the answer, and keep popping as long as t beats the new top. Any day still in the stack at the end has no warmer future day — its answer stays 0.",
+  "why_monotonic_decreasing": {
+    "maintained_property": "At any point, the stack contains indices in increasing order (bottom to top) with DECREASING temperatures. The bottom is the earliest and hottest unresolved day; the top is the most recent and coolest.",
+    "why_decreasing": "If we encounter day j where temperatures[j] >= temperatures[i] for i < j (and both are in the stack), then i should have been resolved by j already. So a higher temperature can never sit above a lower temperature in the stack — doing so would mean we missed resolving the lower-temperature day.",
+    "what_unresolved_means": "Every index in the stack is waiting for a warmer future day. They are ordered with the hardest-to-resolve (highest temp) at the bottom and easiest-to-resolve (lowest temp) at the top."
+  },
+  "pop_trigger": "We pop when t > mono_stack[-1][1] — strictly greater. This means 'equal temperature days' do NOT resolve each other. If tomorrow is the same temperature, you still wait (the problem asks for WARMER, not equal). If we used >= the algorithm would incorrectly resolve days with equal temperatures.",
+  "push_always": "Every day is pushed onto the stack unconditionally AFTER processing. Even if it resolved some stack entries, it might itself be waiting for a warmer future day. If no warmer day comes, it stays in the stack and its res stays 0.",
+  "answer_formula": "res[idx] = i - idx. When day i resolves day idx: the wait is (current day i) - (resolved day idx). This is the number of days between them.",
+  "approach": {
+    "name": "Monotonic decreasing stack — next greater element pattern",
+    "steps": [
+      "Initialize mono_stack = [], res = [0] * n.",
+      "For each (i, t) in enumerate(temperatures):",
+      "  While stack is not empty AND t > stack[-1][1]: pop (idx, temp). Set res[idx] = i - idx.",
+      "  Append (i, t) to stack regardless.",
+      "Return res."
+    ]
+  },
+  "code": {
+    "language": "python",
+    "solution": "from typing import List\n\nclass Solution:\n    def dailyTemperatures(self, temperatures: List[int]) -> List[int]:\n        mono_stack = []          # stores (index, temperature) of unresolved days\n        res = [0] * len(temperatures)\n\n        for i, t in enumerate(temperatures):\n\n            # while current temp beats the top of stack — resolve those days\n            while mono_stack and t > mono_stack[-1][1]:\n                idx, temp = mono_stack.pop()\n                res[idx] = i - idx    # days waited = current day - resolved day\n\n            # push current day regardless — it might still be waiting\n            mono_stack.append((i, t))\n\n        return res\n\n        # Time Complexity:  O(n) — each element pushed once and popped at most once\n        # Space Complexity: O(n) — stack holds at most n elements"
+  },
+  "complexity": {
+    "time": "O(n) — each of n elements is pushed exactly once and popped at most once. Total push + pop operations <= 2n. Each iteration does O(1) work outside the while loop. Total: O(n).",
+    "space": "O(n) — stack holds at most n elements (worst case: strictly decreasing temperatures — all pushed, none popped)."
+  },
+  "full_trace": {
+    "input": "temperatures = [73,74,75,71,69,72,76,73]",
+    "steps": [
+      "i=0, t=73: stack empty, no pops. Push (0,73). stack=[(0,73)]. res=[0,0,0,0,0,0,0,0].",
+      "i=1, t=74: 74>73 -> pop (0,73), res[0]=1-0=1. Stack empty, stop. Push (1,74). stack=[(1,74)]. res=[1,0,0,0,0,0,0,0].",
+      "i=2, t=75: 75>74 -> pop (1,74), res[1]=2-1=1. Stack empty, stop. Push (2,75). stack=[(2,75)]. res=[1,1,0,0,0,0,0,0].",
+      "i=3, t=71: 71>75? No. Push (3,71). stack=[(2,75),(3,71)]. res unchanged.",
+      "i=4, t=69: 69>71? No. Push (4,69). stack=[(2,75),(3,71),(4,69)]. res unchanged.",
+      "i=5, t=72: 72>69? Yes -> pop (4,69), res[4]=5-4=1. 72>71? Yes -> pop (3,71), res[3]=5-3=2. 72>75? No, stop. Push (5,72). stack=[(2,75),(5,72)]. res=[1,1,0,2,1,0,0,0].",
+      "i=6, t=76: 76>72? Yes -> pop (5,72), res[5]=6-5=1. 76>75? Yes -> pop (2,75), res[2]=6-2=4. Stack empty, stop. Push (6,76). stack=[(6,76)]. res=[1,1,4,2,1,1,0,0].",
+      "i=7, t=73: 73>76? No. Push (7,73). stack=[(6,76),(7,73)]. res unchanged.",
+      "Loop ends. Remaining stack: [(6,76),(7,73)] — both stay 0.",
+      "Return [1,1,4,2,1,1,0,0]."
+    ]
+  },
+  "why_store_index": "The stack stores (index, temperature) pairs. We NEED the index to compute res[idx] = i - idx. Storing only the temperature would lose the day number — we couldn't fill in the answer. An alternative: store only indices, retrieve temperature via temperatures[mono_stack[-1]]. Both are correct; tuples are more readable.",
+  "index_only_alternative": {
+    "description": "Store only indices in the stack, look up temperature when needed.",
+    "code": "def dailyTemperatures(self, temperatures):\n    stack = []\n    res = [0] * len(temperatures)\n    for i, t in enumerate(temperatures):\n        while stack and t > temperatures[stack[-1]]:\n            idx = stack.pop()\n            res[idx] = i - idx\n        stack.append(i)\n    return res",
+    "tradeoff": "Saves a small amount of memory per entry (one integer vs a tuple). Requires temperatures[stack[-1]] lookup instead of stack[-1][1]. Both O(n) time and O(n) space."
+  },
+  "brute_force": {
+    "description": "For each day i, scan forward to find the next j where temperatures[j] > temperatures[i].",
+    "code": "def dailyTemperatures(self, temperatures):\n    n = len(temperatures)\n    res = [0] * n\n    for i in range(n):\n        for j in range(i+1, n):\n            if temperatures[j] > temperatures[i]:\n                res[i] = j - i\n                break\n    return res",
+    "time": "O(n^2)",
+    "why_too_slow": "For n=10^5: up to 5*10^9 inner loop iterations. Times out."
+  },
+  "next_greater_element_pattern": "This is the canonical 'next greater element' problem. The monotonic stack pattern solves it in O(n). The same pattern appears in: Next Greater Element I (LC 496), Next Greater Element II (LC 503, circular), Maximum Width Ramp (LC 962), Trapping Rain Water (LC 42 stack approach), Stock Span Problem. Master this pattern and you can solve the whole family.",
+  "python_gotchas": [
+    "t > mono_stack[-1][1] uses STRICT greater than. Equal temperatures do NOT resolve each other — the problem asks for WARMER (strictly). If the next day has the same temperature, you must wait longer.",
+    "Push happens AFTER the while loop, not inside it. Every day goes on the stack (it might need to wait). Pushing inside the while loop would re-add already-resolved days.",
+    "res = [0] * len(temperatures) — initialized to 0. Days that never find a warmer day correctly return 0 without any special handling.",
+    "The while loop pops ALL stack entries beaten by t, not just one. A single hot day can resolve many consecutive cold days in one pass.",
+    "enumerate(temperatures) gives (i, t) directly — cleaner than range(len()) + indexing. i is the day index, t is the temperature.",
+    "Remaining stack entries at loop end stay as res=0 — correct, since they have no warmer future day."
+  ],
+  "edge_cases": [
+    {
+      "case": "Single element [50]",
+      "result": "Stack starts empty. Push (0,50). No warmer day. Return [0]."
+    },
+    {
+      "case": "Strictly increasing [1,2,3,4]",
+      "result": "Each element pops exactly one previous entry. res=[1,1,1,0]. Stack at end: [(3,4)]."
+    },
+    {
+      "case": "Strictly decreasing [4,3,2,1]",
+      "result": "Nothing ever beats the stack top. All 4 entries pushed, none popped. res=[0,0,0,0]."
+    },
+    {
+      "case": "All equal [5,5,5]",
+      "result": "5 > 5 is False — nothing ever pops. res=[0,0,0]. Equal temperatures don't resolve each other."
+    }
+  ],
+  "related_problems": [
+    {
+      "title": "Next Greater Element I (LC 496)",
+      "relation": "Exact same pattern — find the next greater element for each value. The difference: elements are from two separate arrays. Same monotonic stack approach."
+    },
+    {
+      "title": "Next Greater Element II (LC 503)",
+      "relation": "Circular array variant — wrap around to the beginning. Solve by iterating 2n elements (or using modulo). Same decreasing stack pattern."
+    },
+    {
+      "title": "Maximum Width Ramp (LC 962)",
+      "relation": "Also uses a monotonic decreasing stack (pass 1) and resolves entries in pass 2. More complex two-pass structure but same stack-building logic."
+    },
+    {
+      "title": "Largest Rectangle in Histogram (LC 84)",
+      "relation": "Uses a monotonic INCREASING stack instead of decreasing. When a shorter bar is found, it resolves taller bars to its left. Mirror image of this problem."
+    },
+    {
+      "title": "Stock Span Problem",
+      "relation": "Find how many consecutive days (including current) the stock price was <= today's price. Same monotonic stack, counting spans instead of future distances."
+    }
+  ],
+  "mcqs": [
+    {
+      "id": 1,
+      "question": "What does the monotonic stack contain at any point during the algorithm?",
+      "options": [
+        "Indices of all days processed so far",
+        "Indices (and temperatures) of days whose next warmer day has NOT yet been found — unresolved days. The stack is ordered with increasing indices and DECREASING temperatures (bottom hottest, top coolest).",
+        "Only the current day's temperature",
+        "The maximum temperatures seen so far"
+      ],
+      "answer": 1,
+      "explanation": "The stack holds unresolved days — days waiting for their next warmer day. New days are only pushed if they don't beat the current top (or after resolving what they can). This maintains the decreasing temperature invariant: the top is always the coolest unresolved day, which is the easiest to resolve next."
+    },
+    {
+      "id": 2,
+      "question": "Why is the stack monotonically DECREASING in temperature (not increasing)?",
+      "options": [
+        "Decreasing stacks are always faster than increasing stacks",
+        "We resolve a stack entry when we find a warmer day. If a hotter entry were above a cooler entry, the cooler entry should have already been resolved by the day that was hotter. The decreasing property is the natural consequence of only pushing when the current temperature doesn't beat the top.",
+        "The temperatures are always input in decreasing order",
+        "Decreasing stacks allow O(1) maximum lookup"
+      ],
+      "answer": 1,
+      "explanation": "Suppose temp[j] >= temp[i] for i < j (both in stack, j above i — more recent). But then when day j was processed, temp[j] should have resolved day i (since temp[j] >= temp[i]). Contradiction — i would have been popped then. So it's impossible for a hotter day to sit ABOVE a cooler day in the stack. The stack is always decreasing."
+    },
+    {
+      "id": 3,
+      "question": "What does 'res[idx] = i - idx' compute?",
+      "options": [
+        "The temperature difference between day i and day idx",
+        "The number of days waited: current day index i minus the index of the resolved day idx. If idx=3 and i=5: res[3]=5-3=2 means day 3 had to wait 2 days for a warmer temperature.",
+        "The average temperature between days idx and i",
+        "The index of the next warmer day"
+      ],
+      "answer": 1,
+      "explanation": "When day i resolves day idx (pops it from the stack): day i is the FIRST day warmer than day idx. Days waited = i - idx. Example: day 2 (75°) is resolved by day 6 (76°). res[2] = 6-2 = 4. Day 2 waits 4 days for a warmer temperature."
+    },
+    {
+      "id": 4,
+      "question": "What is the time complexity and how is O(n) proven despite the nested while loop?",
+      "options": [
+        "O(n^2) — the while loop can run n times per outer iteration",
+        "O(n log n) — similar to sort-based approaches",
+        "O(n) — each element is pushed exactly once and popped at most once. Total operations across the ENTIRE algorithm: at most n pushes + n pops = 2n = O(n).",
+        "O(n) only in the best case; O(n^2) worst case"
+      ],
+      "answer": 2,
+      "explanation": "Amortized analysis: there are n elements. Each is pushed exactly once. Each can be popped at most once. Total push+pop operations = at most 2n. The while loop's total iterations across ALL outer loop iterations is bounded by n (number of pops). Each outer iteration also does O(1) work (push). Total: O(n). This is the standard amortized argument for all monotonic stack problems."
+    },
+    {
+      "id": 5,
+      "question": "temperatures = [73,74,75,71,69,72,76,73]. At i=5 (t=72), which stack entries are popped and what values are set?",
+      "options": [
+        "Only (4,69) is popped. res[4]=1.",
+        "(4,69) and (3,71) are both popped. res[4]=5-4=1, res[3]=5-3=2. Then 72 < 75, stop.",
+        "(4,69), (3,71), and (2,75) are all popped.",
+        "Nothing is popped — 72 < 75 immediately."
+      ],
+      "answer": 1,
+      "explanation": "Before i=5: stack=[(2,75),(3,71),(4,69)]. t=72. 72>69: pop (4,69), res[4]=5-4=1. 72>71: pop (3,71), res[3]=5-3=2. 72>75? No. Stop. Push (5,72). stack=[(2,75),(5,72)]. Two entries resolved in one iteration."
+    },
+    {
+      "id": 6,
+      "question": "Why is the push statement AFTER the while loop, not inside it?",
+      "options": [
+        "Inside the while loop would cause infinite recursion",
+        "The push adds the CURRENT day i to the stack. It happens after we finish resolving others — once each current day has had a chance to resolve previous days, it is itself pushed as a new unresolved entry waiting for ITS next warmer day. Pushing inside the while would re-add already-resolved days or add the current day multiple times.",
+        "Python syntax requires the push to be after the while",
+        "The push order doesn't matter — inside or outside gives the same result"
+      ],
+      "answer": 1,
+      "explanation": "The structure is: (1) Process — pop entries that current day resolves. (2) Push current day. Every day, no matter how many it resolves, gets pushed once at the end. If it resolved nobody (cooler than top), it just gets pushed. If it resolved everyone in the stack, it still gets pushed — it's a new unresolved entry. The push is always unconditional and always comes after processing."
+    },
+    {
+      "id": 7,
+      "question": "Why does the condition use STRICT greater than (t > stack[-1][1]) and not >=?",
+      "options": [
+        "Strict greater than is faster to compute",
+        "The problem asks for a WARMER day — strictly hotter. If tomorrow is the same temperature, it doesn't count. Using >= would resolve same-temperature days, giving wrong answers. Example: [50,50] with >= would give res[0]=1, but the correct answer is res[0]=0 (tomorrow is equally warm, not warmer).",
+        "Equal temperatures cannot coexist in the stack",
+        "Using >= would cause the stack to overflow"
+      ],
+      "answer": 1,
+      "explanation": "Problem statement: 'warmer temperature' means strictly greater. temperatures[j] > temperatures[i]. If temperatures[j] == temperatures[i], day j is NOT warmer. Using >= in the while condition would pop a stack entry when the next day has equal temperature — assigning a non-zero wait when the answer should be 0. The strict > preserves the 'warmer' semantics."
+    },
+    {
+      "id": 8,
+      "question": "temperatures = [30,40,50,60]. Trace the stack through all iterations.",
+      "options": [
+        "Stack grows to all 4 elements, then is cleared at the end",
+        "i=0: push (0,30). i=1: 40>30 pop(0,30),res[0]=1. Push(1,40). i=2: 50>40 pop(1,40),res[1]=1. Push(2,50). i=3: 60>50 pop(2,50),res[2]=1. Push(3,60). End: stack=[(3,60)]. Return [1,1,1,0].",
+        "i=0: push. i=1: no pop (40<30 false). Push. Stack has 2 elements. ...",
+        "Stack is always empty between iterations for increasing arrays"
+      ],
+      "answer": 1,
+      "explanation": "Strictly increasing: each new temperature beats the top, popping exactly one entry before pushing itself. Stack always has exactly one element after each iteration (the most recent). res=[1,1,1,0]. Day 3 (60°): no warmer day, stays in stack, res[3]=0."
+    },
+    {
+      "id": 9,
+      "question": "temperatures = [90,80,70,60]. What happens in the algorithm?",
+      "options": [
+        "All entries are popped at the end of the loop",
+        "Nothing is ever popped. Each temperature is less than the previous (and thus less than the stack top). All 4 entries are pushed. No while loop body executes. Stack=[(0,90),(1,80),(2,70),(3,60)] at end. res=[0,0,0,0].",
+        "Each entry pops the previous one",
+        "Only the last entry resolves others"
+      ],
+      "answer": 1,
+      "explanation": "Strictly decreasing: 80<90, 70<80, 60<70. At each step: t is less than stack top, while condition fails, nothing popped. Everything pushed. The stack accumulates all entries in decreasing temperature order. All stay unresolved. res=[0,0,0,0]. Worst case for stack size."
+    },
+    {
+      "id": 10,
+      "question": "What is the space complexity and what determines worst case?",
+      "options": [
+        "O(1) — only a few variables used",
+        "O(log n) — stack depth is logarithmic",
+        "O(n) — worst case is a strictly decreasing array where all n elements are pushed and none are popped. Stack reaches size n.",
+        "O(n) for the stack and O(n) for res, total O(2n) = O(n^2)"
+      ],
+      "answer": 2,
+      "explanation": "Stack: at most n elements (all pushed when strictly decreasing). res: exactly n elements. Both are O(n). Total auxiliary space O(n). (res is the required output — sometimes not counted as auxiliary, but the stack is.) Worst case: all temperatures decreasing — stack never shrinks. Best case: all increasing — stack is always size 1."
+    },
+    {
+      "id": 11,
+      "question": "How would you solve the CIRCULAR version of this problem (Next Greater Element II, LC 503)?",
+      "options": [
+        "Run the same algorithm twice and combine results",
+        "Iterate 2n times (or use index % n). The second pass allows elements near the end to find warmer elements near the beginning. Stack still holds unresolved indices; the circular wrap lets them find answers in the 'second round'.",
+        "Reverse the array and apply the same algorithm",
+        "Circular arrays cannot be solved with monotonic stacks"
+      ],
+      "answer": 1,
+      "explanation": "For circular next greater element: run the main loop for 2*n iterations, using index i % n to access the array. The first n iterations work like the standard problem. The second n iterations let elements that were unresolved in round 1 find their next greater element in the 'wrapped around' portion. Unresolved after 2n iterations get -1 (or 0). Same stack logic, doubled loop."
+    },
+    {
+      "id": 12,
+      "question": "temperatures = [50,50,50]. What does the algorithm return?",
+      "options": [
+        "[1,1,0] — same temperature counts as 'next warmer'",
+        "[0,0,0] — 50 is NOT strictly greater than 50. No day is ever warmer. Stack accumulates all three entries, none popped.",
+        "[0,1,0] — middle day resolved by last day",
+        "An error — equal temperatures cause infinite loop"
+      ],
+      "answer": 1,
+      "explanation": "t > stack[-1][1]: 50 > 50 is False. The while loop never executes. All three days are pushed. Stack=[(0,50),(1,50),(2,50)]. res=[0,0,0]. Correct — no day has a strictly warmer future day."
+    },
+    {
+      "id": 13,
+      "question": "An alternative implementation stores only indices (not tuples) in the stack. What is the tradeoff?",
+      "options": [
+        "Index-only stack is incorrect — you need the temperature stored",
+        "Index-only: 'stack.append(i)' instead of 'stack.append((i,t))'. Temperature accessed via temperatures[stack[-1]]. Slightly less memory per entry (one int vs a tuple). Comparison becomes 't > temperatures[stack[-1]]'. Functionally identical. Tuple version is more readable; index-only is more memory-efficient.",
+        "Index-only stack runs in O(n^2) because of temperature lookups",
+        "Index-only doesn't work for duplicate temperatures"
+      ],
+      "answer": 1,
+      "explanation": "Both approaches are O(n) time and O(n) space. Tuple (i,t): direct access to temperature via stack[-1][1] — no array lookup. Index-only: stack[-1] is just the index; temperature accessed via temperatures[stack[-1]] — one extra array dereference. Both are O(1) operations. The index-only version saves a small constant factor of memory. Most interview solutions use one or the other based on preference."
+    },
+    {
+      "id": 14,
+      "question": "At i=6 (t=76) in temperatures=[73,74,75,71,69,72,76,73], the stack is [(2,75),(5,72)]. What happens?",
+      "options": [
+        "Only (5,72) is popped. Stack=[(2,75),(6,76)].",
+        "76>72: pop (5,72), res[5]=6-5=1. 76>75: pop (2,75), res[2]=6-2=4. Stack empty. Push (6,76). Stack=[(6,76)]. res=[1,1,4,2,1,1,0,0].",
+        "76 < 75 so nothing is popped.",
+        "Both entries popped and 76 resolves itself."
+      ],
+      "answer": 1,
+      "explanation": "t=76. Stack=[(2,75),(5,72)]. 76>72: pop (5,72), res[5]=6-5=1. 76>75: pop (2,75), res[2]=6-2=4. Stack empty: stop while. Push (6,76). Stack=[(6,76)]. Day 6 (76°) single-handedly resolves two days at once — the 72° day (waited 1 day) and the 75° day (waited 4 days)."
+    },
+    {
+      "id": 15,
+      "question": "What distinguishes this 'next greater element' pattern from the 'next greater or equal element' pattern?",
+      "options": [
+        "They use different data structures",
+        "Strictly greater: while t > stack_top. Equal temperature does NOT resolve. Any day with same temperature as an unresolved day must keep waiting. Greater or equal: while t >= stack_top. Same-temperature day resolves — answered by the next day with equal or higher temperature. For this problem, strictly greater is required.",
+        "Greater or equal is always faster",
+        "They produce the same result for all inputs"
+      ],
+      "answer": 1,
+      "explanation": "The problem defines 'warmer' as strictly greater. If the problem asked 'when will temperature be at least as high' — use >=. Key difference: for input [50,50], strictly greater gives [0,0] (no warmer day). Greater-or-equal gives [1,0] (tomorrow is at least as warm). Always match the condition to the problem's definition of 'resolving'."
+    },
+    {
+      "id": 16,
+      "question": "temperatures = [100,99,98,97,96,100]. What are the final res values?",
+      "options": [
+        "[5,4,3,2,1,0] — each day waits for the final 100",
+        "[0,0,0,0,0,0] — two 100s are equal so nothing resolves",
+        "[5,4,3,2,1,0]: Day 0 (100): the second 100 at i=5 is NOT strictly greater. res[0]=0. Days 1-4 (99,98,97,96): all resolved by i=5 (100 > all). res[1]=5-1=4, res[2]=5-2=3, res[3]=5-3=2, res[4]=5-4=1. Day 5: res[5]=0.",
+        "res=[0,4,3,2,1,0] — day 0 has same temp as day 5, stays 0."
+      ],
+      "answer": 3,
+      "explanation": "Pass 1: i=0 push (0,100). i=1: 99<100, push (1,99). i=2: 98<99, push. i=3,4: similar. i=5 t=100: 100>96 pop (4,96) res[4]=1. 100>97 pop (3,97) res[3]=2. 100>98 pop (2,98) res[2]=3. 100>99 pop (1,99) res[1]=4. 100>100? NO — 100 is not STRICTLY greater than 100. Stop. Push (5,100). Stack=[(0,100),(5,100)]. res=[0,4,3,2,1,0]."
+    },
+    {
+      "id": 17,
+      "question": "How does this problem relate to Largest Rectangle in Histogram (LC 84)?",
+      "options": [
+        "Both use monotonic decreasing stacks",
+        "Largest Rectangle uses a monotonic INCREASING stack (resolves entries when a shorter bar is found). Daily Temperatures uses a monotonic DECREASING stack (resolves entries when a taller temperature is found). They are mirror images: LC 739 resolves on 'greater', LC 84 resolves on 'smaller'. Both are O(n) next-element patterns.",
+        "They have identical code with different comparison operators",
+        "LC 84 is solved with DP, not a stack"
+      ],
+      "answer": 1,
+      "explanation": "LC 739: decreasing stack. Pop when current > top (next greater element). Unresolved = waiting for something bigger. LC 84: increasing stack. Pop when current < top (next smaller bar to the left — used to determine rectangle width). Unresolved = bars that haven't been bounded yet. The two problems are conceptual mirrors: one seeks the next LARGER, one seeks the next SMALLER. Both are O(n) monotonic stack solutions."
+    },
+    {
+      "id": 18,
+      "question": "If a day is in the stack at the end of the loop, what does res[that_day] equal and why?",
+      "options": [
+        "res[day] = -1 to signal 'no warmer day'",
+        "res[day] = 0. The array was initialized to 0. Days remaining in the stack were never popped — no warmer day was found. The 0 initialization correctly represents 'no future warmer day'. No special post-processing needed.",
+        "res[day] = n - day (distance to end of array)",
+        "res[day] = the maximum temperature in the remaining array"
+      ],
+      "answer": 1,
+      "explanation": "res = [0] * n at initialization. 0 means 'no warmer future day'. A day is only updated (res[idx] = i - idx) when it is POPPED — meaning a warmer day was found. If never popped, res[idx] stays 0. This is the elegant part of the algorithm: the default answer (0) requires no cleanup after the main loop."
+    },
+    {
+      "id": 19,
+      "question": "temperatures = [73,74,75,71,69,72,76,73]. At the end of the loop, what's left in the stack?",
+      "options": [
+        "Empty — all days were resolved",
+        "[(6,76),(7,73)] — days 6 and 7 have no warmer future day",
+        "[(2,75),(6,76)] — the two highest temperatures",
+        "[(7,73)] — only the last day"
+      ],
+      "answer": 1,
+      "explanation": "After the full trace: day 6 (76°) is the maximum — no future day beats it. Day 7 (73°) comes after day 6 but 73 < 76, so day 6 is never popped. Day 7 (73°) is the last day — no future. Both stay in the stack. res[6]=res[7]=0. Stack=[(6,76),(7,73)] at end."
+    },
+    {
+      "id": 20,
+      "question": "Why is 'for i, t in enumerate(temperatures)' preferred over 'for i in range(len(temperatures)): t = temperatures[i]'?",
+      "options": [
+        "enumerate is always faster than range",
+        "enumerate(temperatures) is Pythonic — gives (index, value) pairs directly without indexing. Cleaner, more readable, avoids the extra temperatures[i] lookup. Functionally identical in terms of correctness and complexity.",
+        "enumerate prevents IndexError on empty arrays",
+        "range(len()) cannot be used with monotonic stacks"
+      ],
+      "answer": 1,
+      "explanation": "Both are O(n) and correct. enumerate is the idiomatic Python way to iterate with an index. It avoids the repetitive temperatures[i] pattern. In this algorithm, both i (for res[idx] = i - idx) and t (for comparison) are needed — enumerate provides both cleanly. No performance difference in CPython."
+    },
+    {
+      "id": 21,
+      "question": "temperatures = [1,1,1,1,1,2]. What are the res values?",
+      "options": [
+        "[5,4,3,2,1,0] — all days wait for the final 2",
+        "[0,0,0,0,0,0] — 2 is equal to 1 plus 1",
+        "[5,4,3,2,1,0]: All five 1s are pushed. Day 5 (t=2): 2>1, pop all five. res[4]=5-4=1, res[3]=5-3=2, res[2]=5-2=3, res[1]=5-1=4, res[0]=5-0=5. Push (5,2). Stack=[(5,2)]. Return [5,4,3,2,1,0].",
+        "[1,1,1,1,1,0] — each day waits one day for the next 1... but 1 is not warmer than 1."
+      ],
+      "answer": 2,
+      "explanation": "Days 0-4 (all temp=1): pushed in sequence. Stack=[(0,1),(1,1),(2,1),(3,1),(4,1)]. Day 5 (t=2): 2>1, pop all five in sequence. res[4]=1, res[3]=2, res[2]=3, res[1]=4, res[0]=5. Stack empty. Push (5,2). res=[5,4,3,2,1,0]. Day 5 (2°) resolves all previous days simultaneously in one while loop run — O(n) total, not O(n) per iteration."
+    },
+    {
+      "id": 22,
+      "question": "What would happen if you pushed BEFORE the while loop instead of after?",
+      "options": [
+        "The algorithm would still be correct — order doesn't matter",
+        "You would push i FIRST, then try to pop it with itself. When t > stack[-1][1] is checked after pushing (i,t), the top IS (i,t) itself. t > t is False — so actually no issue there. BUT: you've pushed i before comparing it with previous entries, and you'd compare t with itself first (t > t = False) then fall to the previous entries. The while loop would work BUT you'd push duplicates or have incorrect behavior depending on loop structure.",
+        "Pushing before causes res[i] = 0 incorrectly for all elements",
+        "Python raises a RuntimeError for modifying a list while iterating"
+      ],
+      "answer": 1,
+      "explanation": "If you push FIRST: stack has (i,t) on top. while t > stack[-1][1]: t > t is False. Loop doesn't run at all — day i never resolves any previous day! The algorithm would produce all 0s. The push MUST come AFTER the while loop: (1) process — pop what current day resolves, (2) push — add current day as a new unresolved entry."
+    },
+    {
+      "id": 23,
+      "question": "temperatures = [76,73,72,71,69,75,76,73]. What is res[0]?",
+      "options": [
+        "res[0]=6 — day 6 (76) matches day 0 (76) — but 76 is not STRICTLY greater than 76",
+        "res[0]=0 — day 0 is 76°. No future day is strictly greater than 76°. Even though day 6 is also 76°, it's not WARMER. res[0]=0.",
+        "res[0]=5 — day 5 (75) is warmer... but 75 < 76",
+        "res[0]=1 — day 1 is warmer"
+      ],
+      "answer": 1,
+      "explanation": "Day 0: temp=76°. Subsequent days: 73,72,71,69,75,76,73. None are STRICTLY greater than 76. Day 6 has 76° — same, not warmer. res[0]=0. The stack entry (0,76) is never popped because t > 76 is never True in the remaining array. 76° is the global max — nothing beats it."
+    },
+    {
+      "id": 24,
+      "question": "What is the connection between this problem and Maximum Width Ramp (LC 962)?",
+      "options": [
+        "Both use the same code with different variable names",
+        "Both build a monotonic DECREASING stack in a left-to-right pass to identify candidate entries. Both then process from the right to resolve stack entries. LC 739 resolves in a single left-to-right pass (each new element resolves previous entries on the same pass). LC 962 uses two separate passes. Both are O(n) monotonic stack problems.",
+        "LC 962 uses an increasing stack while LC 739 uses decreasing",
+        "LC 962 finds minimum values while LC 739 finds maximum"
+      ],
+      "answer": 1,
+      "explanation": "Both build a decreasing stack of candidate indices and resolve them when a 'greater' condition is met. LC 739: resolve in-line — single left-to-right pass, resolve earlier entries when current t is larger. LC 962: build full decreasing stack first (pass 1), then resolve by sweeping j right-to-left (pass 2). The core pattern — decreasing stack for 'next greater' — is shared. LC 739's single-pass is simpler; LC 962's two-pass handles a different condition (widest ramp, not just next greater)."
+    },
+    {
+      "id": 25,
+      "question": "An interviewer asks you to explain the algorithm in one sentence. What is the best answer?",
+      "options": [
+        "We sort the temperatures and use binary search to find the next warmer day for each index.",
+        "We maintain a monotonically decreasing stack of unresolved days; when a warmer day is found, we pop and resolve all days it beats, recording the number of days waited as the index difference.",
+        "We use dynamic programming to precompute the next greater element for each position.",
+        "We use two pointers to find pairs of days where the right is warmer than the left."
+      ],
+      "answer": 1,
+      "explanation": "This one sentence captures the entire algorithm: (1) monotonically decreasing stack — what kind and why; (2) unresolved days — what's in the stack; (3) warmer day found — the trigger condition; (4) pop and resolve all it beats — the while loop; (5) index difference — the formula. In an interview, a crisp one-sentence summary followed by a trace demonstrates mastery."
+    }
+  ]
+}
