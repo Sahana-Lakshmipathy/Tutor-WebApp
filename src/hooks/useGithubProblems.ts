@@ -12,7 +12,7 @@ interface GithubFile {
   download_url: string;
 }
 
-function parseMeta(filename: string): ProblemMeta | null {
+function parseMeta(filename: string): Omit<ProblemMeta, 'difficulty'> | null {
   // Expects filenames like "542-01-matrix.json"
   const match = filename.match(/^(\d+)-(.+)\.json$/);
   if (!match) return null;
@@ -20,7 +20,6 @@ function parseMeta(filename: string): ProblemMeta | null {
     filename,
     id: match[1],
     title: match[2].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-    difficulty: 'Medium', // will be overridden when full problem loads
   };
 }
 
@@ -37,13 +36,26 @@ export function useProblems() {
         return r.json() as Promise<GithubFile[]>;
       })
       .then(files => {
-        const metas = files
+        const stubs = files
           .filter(f => f.type === 'file' && f.name.endsWith('.json'))
           .map(f => parseMeta(f.name))
-          .filter((m): m is ProblemMeta => m !== null)
+          .filter((m): m is Omit<ProblemMeta, 'difficulty'> => m !== null)
           .sort((a, b) => Number(a.id) - Number(b.id));
-        setProblems(metas);
+
+        return Promise.all(
+          stubs.map(stub =>
+            fetch(`${rawBase}/${GITHUB.problemsPath}/${stub.filename}`)
+              .then(r => (r.ok ? r.json() : null) as Promise<Problem | null>)
+              .then((p): ProblemMeta => ({
+                ...stub,
+                title: p?.title ?? stub.title,
+                difficulty: p?.difficulty ?? 'Medium',
+              }))
+              .catch((): ProblemMeta => ({ ...stub, difficulty: 'Medium' }))
+          )
+        );
       })
+      .then(setProblems)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
